@@ -46,6 +46,18 @@ class Construction:
         self.b = 0.0
         self.y_int = 0.0
 
+    def get_construction_name(self):
+        """Генерация имени конструкции для дерева"""
+        elem_text = ''
+        if len(self.name) > 20:
+            elem_text = self.name
+        else:
+            if len(self.name) == 0:
+                elem_text = self.typ
+            else:
+                elem_text = self.typ + ' - ' + self.name
+        return elem_text
+
 
 class Building:
     typ_constr = ['Наружная стена', 'Покрытие', 'Чердачное перекрытие', 'Перекрытие над холодным подвалом',

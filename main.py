@@ -61,10 +61,7 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         self.combo_ekspl.addItems(['А', 'Б'])
         self.combo_ekspl.setCurrentIndex(0)
         self.tab_osn.setCellWidget(10, 0, self.combo_ekspl)
-        # создаем таблицу с конструкциями
-        self.table_cons = form_constructions.Constructions(self.tab3)
-        self.table_cons.list_constr = self.build.constructions
-        self.table_cons.draw_table()
+
         # таблица с нормативными значениями
         self.tab_norm.setColumnCount(4)
         hor_headers = ['Тип конструкции', 'Сопротивление Rтр', 'Коэффициент', 'Сопротивление Rmin']
@@ -86,6 +83,10 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         rootNode.appendRow(constr)
         self.tree.setModel(treeModel)
         self.tree.expandAll()
+
+        # создаем таблицу с конструкциями
+        self.table_cons = form_constructions.Constructions(self.tab3, tree_nod=constr, constr=self.build.constructions)
+        self.table_cons.draw_table()
 
         # Обработка сигналов
         self.get_data_building()
@@ -109,20 +110,22 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
             self.tabWidget.setCurrentIndex(1)
         elif val.data() == "Конструкции":
             self.tabWidget.setCurrentIndex(2)
+        elif val.parent().data() == "Конструкции":
+            self.tabWidget.setCurrentIndex(3)
 
     def set_data_building(self):
         """Установка параметров здания из элементов формы"""
         self.tab_osn.blockSignals(True)
         self.change_cities()
         self.change_typ_building()
-        self.build.v_heat = float(self.tab_osn.item(2, 0))
-        self.build.floors = int(self.tab_osn.item(3, 0))
-        self.build.area_all = float(self.tab_osn.item(4, 0))
-        self.build.area_calc = float(self.tab_osn.item(5, 0))
-        self.build.area_live = float(self.tab_osn.item(6, 0))
-        self.build.height_building = float(self.tab_osn.item(7, 0))
-        self.build.t_int = float(self.tab_osn.item(8, 0))
-        self.build.w_int = float(self.tab_osn.item(9, 0))
+        self.build.v_heat = float(self.tab_osn.item(2, 0).text())
+        self.build.floors = int(self.tab_osn.item(3, 0).text())
+        self.build.area_all = float(self.tab_osn.item(4, 0).text())
+        self.build.area_calc = float(self.tab_osn.item(5, 0).text())
+        self.build.area_live = float(self.tab_osn.item(6, 0).text())
+        self.build.height_building = float(self.tab_osn.item(7, 0).text())
+        self.build.t_int = float(self.tab_osn.item(8, 0).text())
+        self.build.w_int = float(self.tab_osn.item(9, 0).text())
         self.change_ekspl()
         self.tab_osn.blockSignals(False)
 
