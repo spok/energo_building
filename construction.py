@@ -11,9 +11,9 @@ class Material:
 
 
 class Layer:
-    def __init__(self):
+    def __init__(self, name=''):
         self.name = ''
-        self.delta = 0.0
+        self.thickness = 0.0
         self.lam = 0.0
         self.r = 0.0
         self.s = 0.0
@@ -45,6 +45,7 @@ class Construction:
         self.r_pr = 0.0
         self.b = 0.0
         self.y_int = 0.0
+        self.add_sloy('Кирпичная кладка', 510, 0.76, 9.76)
 
     def get_construction_name(self):
         """Генерация имени конструкции для дерева"""
@@ -57,6 +58,14 @@ class Construction:
             else:
                 elem_text = self.typ + ' - ' + self.name
         return elem_text
+
+    def add_sloy(self, name='', thickness=0, lam=0, s=0):
+        new_layer = Layer(name)
+        new_layer.name = name
+        new_layer.thickness = thickness
+        new_layer.lam = lam
+        new_layer.s = s
+        self.layer.append(new_layer)
 
 
 class Building:
@@ -88,7 +97,7 @@ class Building:
         self.z_ot = 0.0
         self.gsop = 0.0
         self.constructions = []
-        self.add_construction('Наружная стена', 'Тип 1')
+        self.add_construction('Наружная стена', '')
 
     def add_construction(self, typ: str, name: str):
         con = Construction()

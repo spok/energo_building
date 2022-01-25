@@ -1,13 +1,16 @@
 import os
 import sys
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QFileDialog, QInputDialog, QMessageBox, QTreeView
+from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QFileDialog, QInputDialog, QMessageBox, \
+    QTreeView
 from PyQt5 import QtCore, Qt, QtGui, QtWidgets
+
 from PyQt5.Qt import QStandardItemModel, QStandardItem
 import func
 from construction import Building
 import gui_form
 import form_cities
 import form_constructions
+import form_one_construction
 
 
 class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow):
@@ -88,6 +91,10 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         self.table_cons = form_constructions.Constructions(self.tab3, tree_nod=constr, constr=self.build.constructions)
         self.table_cons.draw_table()
 
+        # создаем форму для многослойных конструкций
+        self.tab_one_constr = form_one_construction.ConstructionLayer(self.vbox2, constr=self.build.constructions[0])
+        self.tab_one_constr.draw_table()
+
         # Обработка сигналов
         self.get_data_building()
         self.combo_typ.activated.connect(self.get_change)
@@ -111,13 +118,13 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         elif val.data() == "Конструкции":
             self.tabWidget.setCurrentIndex(2)
         elif val.parent().data() == "Конструкции":
+            # Отображение вкладки с составом конструкции
             self.tabWidget.setCurrentIndex(3)
 
     def set_data_building(self):
         """Установка параметров здания из элементов формы"""
         self.tab_osn.blockSignals(True)
-        self.change_cities()
-        self.change_typ_building()
+        self.get_change()
         self.build.v_heat = float(self.tab_osn.item(2, 0).text())
         self.build.floors = int(self.tab_osn.item(3, 0).text())
         self.build.area_all = float(self.tab_osn.item(4, 0).text())
@@ -156,12 +163,12 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
             if cur_row == 3:
                 try:
                     self.build.floors = int(cur_str)
-                except ValueError:
+                except:
                     self.error_mes.insertPlainText("Количество этажей должно быть целым числом \n")
             else:
                 try:
                     n = float(cur_str)
-                except ValueError:
+                except:
                     self.error_mes.insertPlainText(f"Неверные данные для значения: {self.osn_ver_headers[cur_row]} \n")
         self.set_data_building()
         self.calc_norm()

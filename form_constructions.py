@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QComboBox, QPushButton, QMessageBox
+from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QComboBox, QPushButton, QMessageBox, QWidget
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt
 from PyQt5.Qt import QStandardItem
@@ -6,7 +6,7 @@ from construction import Construction, Building
 from copy import copy
 
 
-class Constructions(QTableWidget):
+class Constructions(QWidget):
     hor_headers = ['Тип конструкции', 'Название конструкции', 'Ro', '', '', '']
 
     def __init__(self, parent=None, tree_nod=None, constr=None):
@@ -16,7 +16,9 @@ class Constructions(QTableWidget):
         vbox_tab2 = QVBoxLayout(parent)
         self.table_cons = QTableWidget()
         self.table_cons.setColumnCount(6)
+
         self.table_cons.setHorizontalHeaderLabels(self.hor_headers)
+        self.table_cons.horizontalHeader().setVisible(True)
         self.table_cons.setColumnWidth(0, 250)
         self.table_cons.setColumnWidth(1, 200)
         self.table_cons.setColumnWidth(2, 50)
@@ -33,6 +35,7 @@ class Constructions(QTableWidget):
         """перерисовка таблицы в соответствии с структурой конструкций"""
         self.table_cons.blockSignals(True)
         self.table_cons.clear()
+        self.table_cons.setHorizontalHeaderLabels(self.hor_headers)
         if len(self.list_constr) > 0:
             self.table_cons.setRowCount(len(self.list_constr))
             # очистка конструкции в дереве проекта
