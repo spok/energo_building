@@ -9,10 +9,10 @@ from copy import copy
 class Constructions(QWidget):
     hor_headers = ['Тип конструкции', 'Название конструкции', 'Ro', '', '', '']
 
-    def __init__(self, parent=None, tree_nod=None, constr=None):
+    def __init__(self, parent=None, tree_nod=None, building=None):
         super().__init__()
         self.nod_constr = tree_nod
-        self.list_constr = constr
+        self.list_constr = building.constructions
         vbox_tab2 = QVBoxLayout(parent)
         self.table_cons = QTableWidget()
         self.table_cons.setColumnCount(6)
@@ -51,7 +51,7 @@ class Constructions(QWidget):
                     # добавление элемента с названием конструкции
                     self.table_cons.setItem(i, 1, QTableWidgetItem(elem.name))
                     # добавление элемента с сопротивлением конструкции
-                    el = QTableWidgetItem(str(elem.ro))
+                    el = QTableWidgetItem(str(elem.r_pr))
                     el.setTextAlignment(Qt.AlignRight)
                     el.setTextAlignment(Qt.AlignVCenter)
                     self.table_cons.setItem(i, 2, el)

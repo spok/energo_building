@@ -1,23 +1,19 @@
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QLineEdit, \
+from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, \
     QTextEdit, QPushButton, QMessageBox, QWidget
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt, QSize
 from construction import Construction, Layer
-from func import to_dot
+from func import to_dot, MyCombo
 
 
 class ConstructionLayer(QWidget):
-    typ_surface_int = ['стен, полов, гладких потолков, потолков с выступающими ребрами при отношении высоты h ребер к расстоянию а между гранями соседних ребер h/a < 0,3',
-                       'потолков с выступающими ребрами при отношении h/a > 0,3', 'окон', 'зенитных фонарей']
-    typ_surface_ext = ['наружных стен, покрытий, перекрытий над проездами и над холодными (без ограждающих стенок) подпольями в Северной строительно-климатической зоне.',
-                       'перекрытий над холодными подвалами, сообщающимися с наружным воздухом, перекрытий над холодными (с ограждающими стенками) подпольями и холодными этажами в Северной строительно-климатической зоне.',
-                       'перекрытий чердачных и над неотапливаемыми подвалами со световыми проемами в стенах, а также наружных стен с воздушной прослойкой, вентилируемой наружным воздухом.',
-                       'перекрытий над неотапливаемыми подвалами и техническими, подпольями не вентилируемых наружным воздухом.']
-    hor_headers = ['Название материала', 'δ, мм', 'λ, Вт/(м∙ºС)', 's, Вт/(м²·°С)', '', '', '', '', '']
+    hor_headers = ['Название материала', 'δ, \nмм', 'λ, \nВт/(м∙ºС)', 's, \nВт/(м²·°С)', '', '', '', '', '']
 
-    def __init__(self, parent=None, constr=None):
+    def __init__(self, parent=None, building=None):
         super().__init__()
-        self.current_construction = constr
+        self.build = building
+        self.current_construction = None
+        self.norm = None
         self.vbox = QVBoxLayout()
         self.label1 = QLabel('Состав конструкции')
         self.vbox.addWidget(self.label1)
@@ -26,9 +22,9 @@ class ConstructionLayer(QWidget):
         self.table_layer.setHorizontalHeaderLabels(self.hor_headers)
         self.table_layer.horizontalHeader().setVisible(True)
         self.table_layer.setColumnWidth(0, 300)
-        self.table_layer.setColumnWidth(1, 80)
-        self.table_layer.setColumnWidth(2, 80)
-        self.table_layer.setColumnWidth(3, 80)
+        self.table_layer.setColumnWidth(1, 60)
+        self.table_layer.setColumnWidth(2, 70)
+        self.table_layer.setColumnWidth(3, 70)
         self.table_layer.setColumnWidth(4, 20)
         self.table_layer.setColumnWidth(5, 20)
         self.table_layer.setColumnWidth(6, 20)
@@ -37,20 +33,24 @@ class ConstructionLayer(QWidget):
         self.vbox.addWidget(self.table_layer)
         self.label2 = QLabel('Внутреняя поверхность')
         self.vbox.addWidget(self.label2)
-        self.combo_alfa_int = QComboBox()
-        self.combo_alfa_int.addItems(self.typ_surface_int)
+        # Настройка списка внутренней поверхности
+        self.combo_alfa_int = MyCombo(Construction.typ_surface_int)
         self.vbox.addWidget(self.combo_alfa_int)
+        # Вставка надписи
         self.label3 = QLabel('Наружная поверхность')
         self.vbox.addWidget(self.label3)
-        self.combo_alfa_ext = QComboBox()
-        self.combo_alfa_ext.addItems(self.typ_surface_ext)
+        # Настройка списка наружной поверхности
+        self.combo_alfa_ext = MyCombo(Construction.typ_surface_ext)
         self.vbox.addWidget(self.combo_alfa_ext)
+        # Добавление ввода коэффициента неоднородности
         self.hbox = QHBoxLayout()
         self.label4 = QLabel('Коэффициент теплотехнической однородности')
         self.hbox.addWidget(self.label4)
         self.coef_r = QLineEdit()
+        self.coef_r.setText('1.0')
         self.hbox.addWidget(self.coef_r)
         self.vbox.addLayout(self.hbox)
+        # Элементы для вывода результатов
         self.label5 = QLabel('Вывод результата')
         self.vbox.addWidget(self.label5)
         self.result_text = QTextEdit()
@@ -58,14 +58,14 @@ class ConstructionLayer(QWidget):
         parent.addLayout(self.vbox)
         # Установка размеров
         self.table_layer.setMaximumSize(QSize(16777215, 16777215))
-        self.table_layer.setMinimumSize(QSize(650, 16777215))
+        self.table_layer.setMinimumSize(QSize(650, 0))
         self.combo_alfa_int.setMaximumSize(QSize(16777215, 16777215))
-        self.combo_alfa_int.setMinimumSize(QSize(650, 16777215))
+        self.combo_alfa_int.setMinimumSize(QSize(650, 0))
         self.combo_alfa_ext.setMaximumSize(QSize(16777215, 16777215))
-        self.combo_alfa_ext.setMinimumSize(QSize(650, 16777215))
+        self.combo_alfa_ext.setMinimumSize(QSize(650, 0))
         self.coef_r.setMaximumSize(QSize(150, 20))
         self.result_text.setMaximumSize(QSize(16777215, 200))
-        self.result_text.setMinimumSize(QSize(16777215, 150))
+        self.result_text.setMinimumSize(QSize(0, 150))
         self.label1.setMaximumSize(QSize(16777215, 20))
         self.label2.setMaximumSize(QSize(16777215, 20))
         self.label3.setMaximumSize(QSize(16777215, 20))
@@ -73,10 +73,21 @@ class ConstructionLayer(QWidget):
         self.label5.setMaximumSize(QSize(16777215, 20))
         # Установка сигналов
         self.table_layer.itemChanged.connect(self.get_change)
+        self.combo_alfa_int.activated.connect(self.get_change)
+        self.combo_alfa_ext.activated.connect(self.get_change)
+        self.coef_r.editingFinished.connect(self.get_change)
+
+    def build_table(self, constr=None, norm=None):
+        self.current_construction = constr
+        self.norm = norm
+        self.draw_table()
 
     def draw_table(self):
-        """Перерисовка таблицы со слоями конструкции"""
+        """Перерисовка таблицы со слоями конструкции и других элементов"""
         self.table_layer.blockSignals(True)
+        self.combo_alfa_int.blockSignals(True)
+        self.combo_alfa_ext.blockSignals(True)
+        self.coef_r.blockSignals(True)
         self.table_layer.clear()
         self.table_layer.setHorizontalHeaderLabels(self.hor_headers)
         if len(self.current_construction.layer) > 0:
@@ -87,18 +98,15 @@ class ConstructionLayer(QWidget):
                     self.table_layer.setItem(i, 0, QTableWidgetItem(elem.name))
                     # добавление элемента с толщиной слоя
                     el = QTableWidgetItem(str(elem.thickness))
-                    el.setTextAlignment(Qt.AlignRight)
-                    el.setTextAlignment(Qt.AlignVCenter)
+                    el.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
                     self.table_layer.setItem(i, 1, el)
                     # добавление элемента с коэффициентом теплопроводности
                     el = QTableWidgetItem(str(elem.lam))
-                    el.setTextAlignment(Qt.AlignRight)
-                    el.setTextAlignment(Qt.AlignVCenter)
+                    el.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
                     self.table_layer.setItem(i, 2, el)
                     # добавление элемента с коэффициентом теплопроводности
                     el = QTableWidgetItem(str(elem.s))
-                    el.setTextAlignment(Qt.AlignRight)
-                    el.setTextAlignment(Qt.AlignVCenter)
+                    el.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
                     self.table_layer.setItem(i, 3, el)
                     # добавление кнопки для добавления пустого слоя
                     el_but = QPushButton()
@@ -135,29 +143,51 @@ class ConstructionLayer(QWidget):
                     el_but.setIcon(el_icon)
                     el_but.clicked.connect(self.move_down)
                     self.table_layer.setCellWidget(i, 8, el_but)
+        # вставка типов поверхностей конструкции
+        self.combo_alfa_int.setCurrentIndex(Construction.list_alfa_int.index(self.current_construction.alfa_int))
+        self.combo_alfa_ext.setCurrentIndex(Construction.list_alfa_ext.index(self.current_construction.alfa_ext))
+        self.coef_r.setText(str(self.current_construction.r_neodn))
+        self.result_text.clear()
+        self.result_text.setText(self.current_construction.get_text_r())
         self.table_layer.blockSignals(False)
+        self.combo_alfa_int.blockSignals(False)
+        self.combo_alfa_ext.blockSignals(False)
+        self.coef_r.blockSignals(False)
 
     def get_change(self):
         """Сохранение внесенных изменений"""
-        index = self.table_layer.currentRow()
-        current_layer = self.current_construction.layer[index]
-        current_layer.name = self.table_layer.item(index, 0).text()
+        # Сохранение изменений в таблице
+        cur_row = self.table_layer.currentRow()
+        if cur_row > -1:
+            current_layer = self.current_construction.layer[cur_row]
+            current_layer.name = self.table_layer.item(cur_row, 0).text()
+            try:
+                current_layer.thickness = float(to_dot(self.table_layer.item(cur_row, 1).text()))
+            except:
+                QMessageBox.about(self, "Ошибка", f"Неверно указана толщина слоя {cur_row}")
+            try:
+                current_layer.lam = float(to_dot(self.table_layer.item(cur_row, 2).text()))
+            except:
+                QMessageBox.about(self, "Ошибка", f"Неверно указан коэффициент теплопроводности слоя {cur_row}")
+            try:
+                current_layer.s = float(to_dot(self.table_layer.item(cur_row, 3).text()))
+            except:
+                QMessageBox.about(self, "Ошибка", f"Неверно указан коэффициент тепловосприятия слоя {cur_row}")
+        # Сохранение изменений в выпадающих списках
+        self.current_construction.alfa_int = Construction.list_alfa_int[self.combo_alfa_int.currentIndex()]
+        self.current_construction.alfa_ext = Construction.list_alfa_ext[self.combo_alfa_ext.currentIndex()]
         try:
-            current_layer.thickness = float(to_dot(self.table_layer.item(index, 1).text()))
+            self.current_construction.r_neodn = float(to_dot(self.coef_r.text()))
         except:
-            QMessageBox.about(self, "Ошибка", f"Неверно указана толщина слоя {index}")
-        try:
-            current_layer.lam = float(to_dot(self.table_layer.item(index, 2).text()))
-        except:
-            QMessageBox.about(self, "Ошибка", f"Неверно указан коэффициент теплопроводности слоя {index}")
-        try:
-            current_layer.s = float(to_dot(self.table_layer.item(index, 3).text()))
-        except:
-            QMessageBox.about(self, "Ошибка", f"Неверно указан коэффициент тепловосприятия слоя {index}")
+            self.current_construction.r_neodn = 1.0
+            self.coef_r.setText('1.0')
+        self.result_text.clear()
+        self.build.calc()
+        self.result_text.setText(self.current_construction.get_text_r())
 
     def add_layer(self):
         """Добавление нового слоя"""
-        self.current_construction.add_sloy()
+        self.current_construction.add_layer()
         self.draw_table()
 
     def delete_layer(self):
@@ -183,6 +213,7 @@ class ConstructionLayer(QWidget):
             if cur > 0:
                 move_element = self.current_construction.layer.pop(cur)
                 self.current_construction.layer.insert(cur - 1, move_element)
+                self.table_layer.selectRow(cur - 1)
                 self.draw_table()
 
     def move_down(self):
@@ -192,4 +223,5 @@ class ConstructionLayer(QWidget):
             if cur < self.table_layer.rowCount() - 1:
                 move_element = self.current_construction.layer.pop(cur)
                 self.current_construction.layer.insert(cur + 1, move_element)
+                self.table_layer.selectRow(cur + 1)
                 self.draw_table()

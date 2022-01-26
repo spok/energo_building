@@ -1,12 +1,11 @@
-import os
+import json
 import sys
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QFileDialog, QInputDialog, QMessageBox, \
-    QTreeView
-from PyQt5 import QtCore, Qt, QtGui, QtWidgets
-
+from PyQt5.QtWidgets import QTableWidgetItem, QFileDialog, QMessageBox, QTreeView, QComboBox
+from PyQt5 import QtCore, QtWidgets
+from PyQt5.QtCore import QSize
 from PyQt5.Qt import QStandardItemModel, QStandardItem
-import func
-from construction import Building
+from func import to_dot, load_excel, MyCombo
+from construction import Building, Construction
 import gui_form
 import form_cities
 import form_constructions
@@ -21,11 +20,16 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
     cities = []
     name_cities = []
     build = Building()
+    filename = ''
 
     def __init__(self):
         # Инициализация родителей
         super().__init__()
         self.setupUi(self)
+        self.label.setMaximumSize(QSize(16777215, 20))
+        self.label.setMinimumSize(QSize(16777215, 20))
+        self.label_2.setMaximumSize(QSize(16777215, 20))
+        self.label_2.setMinimumSize(QSize(0, 20))
         # настройка таблицы основных параметров здания
         tab_row = 11
         self.tab_osn.setColumnCount(2)
@@ -39,14 +43,15 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
             self.tab_osn.setItem(i, 0, QTableWidgetItem())
             self.tab_osn.setItem(i, 1, QTableWidgetItem())
         # список с типами здания
-        self.combo_typ = QtWidgets.QComboBox()
-        self.combo_typ.addItems(Building.typ_buildings)
+        self.combo_typ = MyCombo(Building.typ_buildings)
+        # self.combo_typ = QtWidgets.QComboBox()
+        # self.combo_typ.addItems(Building.typ_buildings)
         self.tab_osn.setCellWidget(1, 0, self.combo_typ)
         # настройка списка с городами
         self.combo_cities = QtWidgets.QComboBox()
         self.tab_osn.setCellWidget(0, 0, self.combo_cities)
         self.show_cities = QtWidgets.QPushButton('...')
-        self.cities = func.load_excel('cities.xlsx')
+        self.cities = load_excel('cities.xlsx')
         for i in self.cities:
             self.name_cities.append(i[0])
             self.combo_cities.addItem(i[0], i)
@@ -67,12 +72,12 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
 
         # таблица с нормативными значениями
         self.tab_norm.setColumnCount(4)
-        hor_headers = ['Тип конструкции', 'Сопротивление Rтр', 'Коэффициент', 'Сопротивление Rmin']
+        hor_headers = ['Тип конструкции', 'Сопротивление \nRтр', 'Коэффициент\nmp', 'Сопротивление \nRmin']
         self.tab_norm.setHorizontalHeaderLabels(hor_headers)
         self.tab_norm.setColumnWidth(0, 250)
-        self.tab_norm.setColumnWidth(1, 120)
-        self.tab_norm.setColumnWidth(2, 120)
-        self.tab_norm.setColumnWidth(3, 150)
+        self.tab_norm.setColumnWidth(1, 100)
+        self.tab_norm.setColumnWidth(2, 100)
+        self.tab_norm.setColumnWidth(3, 100)
 
         # настройка дерева
         self.tree.setHeaderHidden(True)
@@ -80,23 +85,25 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         rootNode = treeModel.invisibleRootItem()
         base = QStandardItem('Основные сведения')
         norm = QStandardItem('Нормативные требования')
-        constr = QStandardItem('Конструкции')
+        self.constructions_node = QStandardItem('Конструкции')
         rootNode.appendRow(base)
         rootNode.appendRow(norm)
-        rootNode.appendRow(constr)
+        rootNode.appendRow(self.constructions_node)
         self.tree.setModel(treeModel)
         self.tree.expandAll()
 
         # создаем таблицу с конструкциями
-        self.table_cons = form_constructions.Constructions(self.tab3, tree_nod=constr, constr=self.build.constructions)
-        self.table_cons.draw_table()
+        self.table_cons = form_constructions.Constructions(self.tab3, tree_nod=self.constructions_node,
+                                                           building=self.build)
 
         # создаем форму для многослойных конструкций
-        self.tab_one_constr = form_one_construction.ConstructionLayer(self.vbox2, constr=self.build.constructions[0])
-        self.tab_one_constr.draw_table()
+        self.tab_one_constr = form_one_construction.ConstructionLayer(self.vbox2, self.build)
 
         # Обработка сигналов
         self.get_data_building()
+        self.but_save.clicked.connect(self.save_json)
+        self.but_save_as.clicked.connect(self.save_as_json)
+        self.but_load.clicked.connect(self.load_from_json)
         self.combo_typ.activated.connect(self.get_change)
         self.combo_cities.activated.connect(self.get_change)
         self.combo_ekspl.activated.connect(self.get_change)
@@ -104,11 +111,17 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         self.tab_osn.itemChanged.connect(self.check_input)
         self.tree.clicked.connect(self.getTreeValue)
         self.get_change()
-
+        self.bild_tree()
 
     def bild_tree(self):
         """Построение структуры конструкций здания"""
-        pass
+        # очистка конструкции в дереве проекта
+        self.constructions_node.removeRows(0, self.constructions_node.rowCount())
+        for i, elem in enumerate(self.build.constructions):
+            if type(elem) is Construction:
+                elem_nod = QStandardItem(elem.get_construction_name())
+                elem_nod.setData(elem)
+                self.constructions_node.appendRow(elem_nod)
 
     def getTreeValue(self, val):
         if val.data() == "Основные сведения":
@@ -117,27 +130,28 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
             self.tabWidget.setCurrentIndex(1)
         elif val.data() == "Конструкции":
             self.tabWidget.setCurrentIndex(2)
+            self.table_cons.draw_table()
         elif val.parent().data() == "Конструкции":
             # Отображение вкладки с составом конструкции
             self.tabWidget.setCurrentIndex(3)
+            self.tab_one_constr.build_table(constr=self.build.constructions[val.row()], norm=self.build.norm)
 
     def set_data_building(self):
         """Установка параметров здания из элементов формы"""
         self.tab_osn.blockSignals(True)
         self.get_change()
-        self.build.v_heat = float(self.tab_osn.item(2, 0).text())
+        self.build.v_heat = float(to_dot(self.tab_osn.item(2, 0).text()))
         self.build.floors = int(self.tab_osn.item(3, 0).text())
-        self.build.area_all = float(self.tab_osn.item(4, 0).text())
-        self.build.area_calc = float(self.tab_osn.item(5, 0).text())
-        self.build.area_live = float(self.tab_osn.item(6, 0).text())
-        self.build.height_building = float(self.tab_osn.item(7, 0).text())
-        self.build.t_int = float(self.tab_osn.item(8, 0).text())
-        self.build.w_int = float(self.tab_osn.item(9, 0).text())
-        self.change_ekspl()
+        self.build.area_all = float(to_dot(self.tab_osn.item(4, 0).text()))
+        self.build.area_calc = float(to_dot(self.tab_osn.item(5, 0).text()))
+        self.build.area_live = float(to_dot(self.tab_osn.item(6, 0).text()))
+        self.build.height_building = float(to_dot(self.tab_osn.item(7, 0).text()))
+        self.build.t_int = float(to_dot(self.tab_osn.item(8, 0).text()))
+        self.build.w_int = float(to_dot(self.tab_osn.item(9, 0).text()))
         self.tab_osn.blockSignals(False)
 
     def get_data_building(self):
-        """Заполнение элементов в соответствии с данными"""
+        """Заполнение элементов формы в соответствии с данными"""
         # Изменение типа здания
         self.combo_typ.setCurrentText(self.build.typ)
         # Изменение текущего города
@@ -155,23 +169,23 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         self.combo_ekspl.setCurrentText(self.build.ekspl)
 
     def check_input(self):
-        """Проверка вводимых данных в ячейках"""
-        self.error_mes.clear()
+        """Проверка вводимых данных в ячейках таблицы"""
         cur_row = self.tab_osn.currentRow()
-        cur_str = self.tab_osn.item(cur_row, 0)
+        cur_str = self.tab_osn.item(cur_row, 0).text()
         if cur_str:
             if cur_row == 3:
                 try:
                     self.build.floors = int(cur_str)
                 except:
-                    self.error_mes.insertPlainText("Количество этажей должно быть целым числом \n")
+                    self.build.floors = 0
+                    print('Некорректно введено количество этажей')
             else:
                 try:
                     n = float(cur_str)
                 except:
-                    self.error_mes.insertPlainText(f"Неверные данные для значения: {self.osn_ver_headers[cur_row]} \n")
+                    print(f'Некорректно введено значение в строке {cur_row}')
         self.set_data_building()
-        self.calc_norm()
+        self.build.calc()
 
     def view_cities(self):
         """Отображение окна с климатическими параметрами городов"""
@@ -240,10 +254,43 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
                 self.tab_norm.item(i, 3).setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
                 self.tab_norm.item(i, 3).setFlags(self.tab_norm.item(i, 3).flags() ^ QtCore.Qt.ItemIsEditable)
 
+    def save_json(self):
+        """Сохранение данных в формате json"""
+        if self.filename == '':
+            name = QFileDialog.getSaveFileName(self, caption="Save data building", filter="Data Files (*.json)")
+            if name[0] != '':
+                self.filename = name[0]
+        if self.filename != '':
+            save_dict = self.build.get_dict()
+            with open(self.filename, 'w') as f:
+                json.dump(save_dict, f, indent=2)
+
+    def save_as_json(self):
+        name = QFileDialog.getSaveFileName(self, caption="Save data building", filter="Data Files (*.json)")
+        if name[0] != '':
+            self.filename = name[0]
+            save_dict = self.build.get_dict()
+            with open(self.filename, 'w') as f:
+                json.dump(save_dict, f, indent=2)
+
+    def load_from_json(self):
+        """Чтение данных из файла json"""
+        name = QFileDialog.getOpenFileName(self, caption="Load data building", filter="Data Files (*.json)")
+        if name[0] != '':
+            self.filename = name[0]
+            with open(self.filename, 'r') as f:
+                load_dict = json.load(f)
+                self.build.data_from_dict(load_dict)
+                self.tab_osn.blockSignals(True)
+                self.get_data_building()
+                self.get_change()
+                self.bild_tree()
+                self.build.calc()
+                self.tab_osn.blockSignals(False)
+
+
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     window = MyWindow()
     window.show()
     sys.exit(app.exec_())
-
-
