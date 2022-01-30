@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QHBoxLa
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt, QSize
 from construction import Construction, Layer
-from func import to_dot, MyCombo
+from func import to_float, MyCombo
 
 
 class ConstructionLayer(QWidget):
@@ -90,9 +90,9 @@ class ConstructionLayer(QWidget):
         self.coef_r.blockSignals(True)
         self.table_layer.clear()
         self.table_layer.setHorizontalHeaderLabels(self.hor_headers)
-        if len(self.current_construction.layer) > 0:
-            self.table_layer.setRowCount(len(self.current_construction.layer))
-            for i, elem in enumerate(self.current_construction.layer):
+        if len(self.current_construction.elements) > 0:
+            self.table_layer.setRowCount(len(self.current_construction.elements))
+            for i, elem in enumerate(self.current_construction.elements):
                 if type(elem) is Layer:
                     # добавление элемента с названием слоя
                     self.table_layer.setItem(i, 0, QTableWidgetItem(elem.name))
@@ -159,25 +159,16 @@ class ConstructionLayer(QWidget):
         # Сохранение изменений в таблице
         cur_row = self.table_layer.currentRow()
         if cur_row > -1:
-            current_layer = self.current_construction.layer[cur_row]
+            current_layer = self.current_construction.elements[cur_row]
             current_layer.name = self.table_layer.item(cur_row, 0).text()
-            try:
-                current_layer.thickness = float(to_dot(self.table_layer.item(cur_row, 1).text()))
-            except:
-                QMessageBox.about(self, "Ошибка", f"Неверно указана толщина слоя {cur_row}")
-            try:
-                current_layer.lam = float(to_dot(self.table_layer.item(cur_row, 2).text()))
-            except:
-                QMessageBox.about(self, "Ошибка", f"Неверно указан коэффициент теплопроводности слоя {cur_row}")
-            try:
-                current_layer.s = float(to_dot(self.table_layer.item(cur_row, 3).text()))
-            except:
-                QMessageBox.about(self, "Ошибка", f"Неверно указан коэффициент тепловосприятия слоя {cur_row}")
+            current_layer.thickness = to_float(self.table_layer.item(cur_row, 1).text())
+            current_layer.lam = to_float(self.table_layer.item(cur_row, 2).text())
+            current_layer.s = to_float(self.table_layer.item(cur_row, 3).text())
         # Сохранение изменений в выпадающих списках
         self.current_construction.alfa_int = Construction.list_alfa_int[self.combo_alfa_int.currentIndex()]
         self.current_construction.alfa_ext = Construction.list_alfa_ext[self.combo_alfa_ext.currentIndex()]
         try:
-            self.current_construction.r_neodn = float(to_dot(self.coef_r.text()))
+            self.current_construction.r_neodn = to_float(self.coef_r.text())
         except:
             self.current_construction.r_neodn = 1.0
             self.coef_r.setText('1.0')
@@ -195,7 +186,7 @@ class ConstructionLayer(QWidget):
         if self.table_layer.rowCount() > 1:
             cur = self.table_layer.currentRow()
             try:
-                self.current_construction.layer.pop(cur)
+                self.current_construction.elements.pop(cur)
             except ValueError:
                 QMessageBox.about(self, "Ошибка", "Ошибка при удалении слоя")
             self.draw_table()
@@ -211,8 +202,8 @@ class ConstructionLayer(QWidget):
         if self.table_layer.rowCount() > 1:
             cur = self.table_layer.currentRow()
             if cur > 0:
-                move_element = self.current_construction.layer.pop(cur)
-                self.current_construction.layer.insert(cur - 1, move_element)
+                move_element = self.current_construction.elements.pop(cur)
+                self.current_construction.elements.insert(cur - 1, move_element)
                 self.table_layer.selectRow(cur - 1)
                 self.draw_table()
 
@@ -221,7 +212,7 @@ class ConstructionLayer(QWidget):
         if self.table_layer.rowCount() > 1:
             cur = self.table_layer.currentRow()
             if cur < self.table_layer.rowCount() - 1:
-                move_element = self.current_construction.layer.pop(cur)
-                self.current_construction.layer.insert(cur + 1, move_element)
+                move_element = self.current_construction.elements.pop(cur)
+                self.current_construction.elements.insert(cur + 1, move_element)
                 self.table_layer.selectRow(cur + 1)
                 self.draw_table()

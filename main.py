@@ -10,12 +10,14 @@ import gui_form
 import form_cities
 import form_constructions
 import form_one_construction
+import form_windows
 
 
 class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow):
     osn_ver_headers = ["Город расположения здания", "Тип здания", "Отапливаемый объем", "Этажность",
                        "Общая площадь здания", "Расчетная площадь", "", "Высота здания",
-                       "Температура внутреннего воздуха", "Относительная влажность", "Условия экспплуатации"
+                       "Температура внутреннего воздуха", "Относительная влажность", "Условия экспплуатации",
+                       'Город для расчета солнечной энергии', 'Широта города'
                        ]
     cities = []
     name_cities = []
@@ -27,11 +29,9 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         super().__init__()
         self.setupUi(self)
         self.label.setMaximumSize(QSize(16777215, 20))
-        self.label.setMinimumSize(QSize(16777215, 20))
         self.label_2.setMaximumSize(QSize(16777215, 20))
-        self.label_2.setMinimumSize(QSize(0, 20))
         # настройка таблицы основных параметров здания
-        tab_row = 11
+        tab_row = len(self.osn_ver_headers)
         self.tab_osn.setColumnCount(2)
         self.tab_osn.setRowCount(tab_row)
         self.tab_osn.setMaximumHeight(int(tab_row*self.tab_osn.rowHeight(0))+10)
@@ -39,17 +39,16 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         self.tab_osn.horizontalHeader().setVisible(False)
         self.tab_osn.setColumnWidth(0, 200)
         self.tab_osn.setColumnWidth(1, 20)
-        for i in range(0, 10):
+        for i in range(0, tab_row):
             self.tab_osn.setItem(i, 0, QTableWidgetItem())
             self.tab_osn.setItem(i, 1, QTableWidgetItem())
         # список с типами здания
         self.combo_typ = MyCombo(Building.typ_buildings)
-        # self.combo_typ = QtWidgets.QComboBox()
-        # self.combo_typ.addItems(Building.typ_buildings)
         self.tab_osn.setCellWidget(1, 0, self.combo_typ)
         # настройка списка с городами
         self.combo_cities = QtWidgets.QComboBox()
         self.tab_osn.setCellWidget(0, 0, self.combo_cities)
+        # добавление кнопки для открытия окна с городами
         self.show_cities = QtWidgets.QPushButton('...')
         self.cities = load_excel('cities.xlsx')
         for i in self.cities:
@@ -57,10 +56,9 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
             self.combo_cities.addItem(i[0], i)
         completer = QtWidgets.QCompleter(self.name_cities)
         self.combo_cities.setCompleter(completer)
-        # self.combo_cities.setEditable(True)
         self.tab_osn.setCellWidget(0, 1, self.show_cities)
         # в столбце с кнопкой убираем режим редактирования ячеек
-        for i in range(1, self.tab_osn.rowCount()-1):
+        for i in range(1, self.tab_osn.rowCount()):
             cell_item = self.tab_osn.item(i, 1)
             if cell_item:
                 cell_item.setFlags(cell_item.flags() ^ QtCore.Qt.ItemIsEditable)
@@ -69,6 +67,15 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         self.combo_ekspl.addItems(['А', 'Б'])
         self.combo_ekspl.setCurrentIndex(0)
         self.tab_osn.setCellWidget(10, 0, self.combo_ekspl)
+        # список с городом для расчета солнечной радиации
+        self.combo_solar_siti = QtWidgets.QComboBox()
+        self.combo_solar_siti.addItems(self.build.solar_citi_dict.keys())
+        self.tab_osn.setCellWidget(11, 0, self.combo_solar_siti)
+        # список с широтой размещения города
+        self.combo_latitude = QtWidgets.QComboBox()
+        s = [str(x) for x in self.build.latitude_list]
+        self.combo_latitude.addItems(s)
+        self.tab_osn.setCellWidget(12, 0, self.combo_latitude)
 
         # таблица с нормативными значениями
         self.tab_norm.setColumnCount(4)
@@ -99,6 +106,9 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         # создаем форму для многослойных конструкций
         self.tab_one_constr = form_one_construction.ConstructionLayer(self.vbox2, self.build)
 
+        # создание формы для окон и витражей
+        self.tab_windows = form_windows.Windows(self.vbox3)
+
         # Обработка сигналов
         self.get_data_building()
         self.but_save.clicked.connect(self.save_json)
@@ -107,6 +117,8 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         self.combo_typ.activated.connect(self.get_change)
         self.combo_cities.activated.connect(self.get_change)
         self.combo_ekspl.activated.connect(self.get_change)
+        self.combo_solar_siti.activated.connect(self.get_change)
+        self.combo_latitude.activated.connect(self.get_change)
         self.show_cities.clicked.connect(self.view_cities)
         self.tab_osn.itemChanged.connect(self.check_input)
         self.tree.clicked.connect(self.getTreeValue)
@@ -133,8 +145,17 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
             self.table_cons.draw_table()
         elif val.parent().data() == "Конструкции":
             # Отображение вкладки с составом конструкции
-            self.tabWidget.setCurrentIndex(3)
-            self.tab_one_constr.build_table(constr=self.build.constructions[val.row()], norm=self.build.norm)
+            if self.build.constructions[val.row()].typ in ['Наружная стена', 'Покрытие', 'Чердачное перекрытие',
+                                                        'Перекрытие над холодным подвалом', 'Перекрытие над проездом']:
+                self.tabWidget.setCurrentIndex(3)
+                self.tab_one_constr.build_table(constr=self.build.constructions[val.row()], norm=self.build.norm)
+            elif self.build.constructions[val.row()].typ in ['Окна', 'Витражи', 'Фонари']:
+                self.tabWidget.setCurrentIndex(4)
+                self.tab_windows.build_table(build=self.build, index=val.row())
+            elif self.build.constructions[val.row()].typ in ['Двери', 'Ворота']:
+                self.tabWidget.setCurrentIndex(5)
+            elif self.build.constructions[val.row()].typ == 'Конструкция в контакте с грунтом':
+                self.tabWidget.setCurrentIndex(6)
 
     def set_data_building(self):
         """Установка параметров здания из элементов формы"""
@@ -167,6 +188,10 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         self.tab_osn.setItem(9, 0, QTableWidgetItem(str(self.build.w_int)))
         # вывод условия эксплуатации
         self.combo_ekspl.setCurrentText(self.build.ekspl)
+        # вывод города для солнечной радиации
+        self.combo_solar_siti.setCurrentText(self.build.solar_citi)
+        # вывод широты
+        self.combo_latitude.setCurrentText(str(self.build.latitude))
 
     def check_input(self):
         """Проверка вводимых данных в ячейках таблицы"""
@@ -223,6 +248,10 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
             self.build.z_ot = cur_citi[10]
         # при изменении условий эксплуатаций
         self.build.ekspl = self.combo_ekspl.currentText()
+        # при изменении города для расчета солнечной радиации
+        self.build.solar_citi = self.combo_solar_siti.currentText()
+        # при изменении широты
+        self.build.latitude = int(self.combo_latitude.currentText())
         self.tab_osn.blockSignals(False)
         # пересчет после изменений параметров
         if not self.tab_osn.signalsBlocked():

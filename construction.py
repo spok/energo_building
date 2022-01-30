@@ -1,5 +1,6 @@
 from math import log
-from func import get_string_index, r_unit, alfa_unit, l_unit
+from func import get_string_index, r_unit, alfa_unit, l_unit, load_solar_radiation, load_orientation_coef
+from copy import copy
 
 class Material:
     def __init__(self):
@@ -9,6 +10,158 @@ class Material:
         self.lam_b = 0.0
         self.s_a = 0.0
         self.s_b = 0.0
+
+
+class BaseConstruction:
+    """Класс базовой конструкции"""
+    def __init__(self):
+        self.typ = ''
+        self.name = ''
+        self.area = 0.0
+        self.r_pr = 0.0
+        self.r_tr = 0.0
+        self.r_tr_min = 0.0
+        self.elements = []
+
+    def get_dict(self):
+        """Генерация словаря с данными
+        :return - словарь"""
+        data = dict()
+        for key in self.__dict__:
+            if key == 'elements':
+                elements = []
+                for elem in self.__dict__[key]:
+                    elements.append(elem.get_dict())
+                data[key] = elements
+            else:
+                data[key] = self.__dict__[key]
+        return data
+
+    def data_from_dict(self, data: dict):
+        """Загрузка данных из словаря"""
+        for key in data:
+            if key == 'elements':
+                self.elements.clear()
+                for i, con in enumerate(data[key]):
+                    self.add_layer()
+                    self.elements[i].data_from_dict(con)
+            else:
+                if key in self.__dict__.keys():
+                    self.__dict__[key] = data[key]
+
+    def get_construction_name(self):
+        """Генерация имени конструкции для дерева"""
+        elem_text = ''
+        if len(self.name) > 20:
+            elem_text = self.name
+        else:
+            if len(self.name) == 0:
+                elem_text = self.typ
+            else:
+                elem_text = self.typ + ' - ' + self.name
+        return elem_text
+
+
+class Doors(BaseConstruction):
+    def __init__(self):
+        super().__init__()
+
+
+class WindowElement:
+    def __init__(self):
+        self.r_pr = 0.0
+        self.area = 0.0
+        self.size = '0*0'
+        self.size_b = 0.0
+        self.size_h = 0.0
+        self.count_orientation = dict()
+        self.g_koef = 0.0
+        self.tau_koef = 0.0
+        self.i_rad = 0.0
+
+    def set_size(self, size: str):
+        """Определение размера окна из строковой переменной"""
+        self.size = size
+        s = []
+        for razd in ['*', 'x', 'х', 'X', 'Х']:
+            if razd in size:
+                s = size.split(razd)
+        if len(s) > 1 and len(size) > 0:
+            self.size_b = float(s[0])
+            self.size_h = float(s[1])
+
+    def get_area(self) -> float:
+        """Плащадь окна общая"""
+        sum_area = 0.0
+        if self.area > 0 and len(self.size) > 0:
+            area = self.area
+        else:
+            area = self.size_b / 1000 * self.size_h / 1000
+        for key, value in self.count_orientation.items():
+            sum_area += area * value
+        return area
+
+    def get_area_azimut(self) -> dict:
+        """Плащадь окна отдельно по азимутам"""
+        res = dict()
+        if self.area > 0 and len(self.size) > 0:
+            area = self.area
+        else:
+            area = self.size_b / 1000 * self.size_h / 1000
+        for key, value in self.count_orientation.items():
+            if value > 0:
+                res[key] = area * value
+        return res
+
+
+class Windows(BaseConstruction):
+    orientation = ['С', 'З', 'Ю', 'В', 'СЗ', 'СВ', 'ЮЗ', 'ЮВ']
+    def __init__(self):
+        super().__init__()
+        self.g_koef = 0.0
+        self.tau_koef = 0.0
+        self.construction_windows = ''
+        self.add_window(r=0.0, area=0.0, size='0*0')
+
+    def add_window(self, r: float = 0.0, area: float = 0.0, size: str = '0*0'):
+        elem = WindowElement()
+        elem.r_pr = r
+        elem.area = area
+        elem.set_size(size)
+        self.elements.append(elem)
+
+    def del_window(self, index):
+        """Удаления выбранной конструкции"""
+        if len(self.elements) > 1:
+            try:
+                self.elements.pop(index)
+            except:
+                print(f'Невозможно удалить строку {index}')
+
+    def calc(self, solar_dict: dict):
+        """Расчет для окон
+        :param solar_dict - словарь с значениями солнечной энергии по азимутам"""
+        # Расчет приведенного сопротивления теплопередаче
+        sum_area = 0
+        sum_r = 0
+        for elem in self.elements:
+            area = elem.get_area()
+            try:
+                sum_r += area / elem.r_pr
+            except:
+                print('Деление на ноль, для окна не указано сопротивление теплопередаче')
+            sum_area += area
+        try:
+            self.r_pr = sum_area/sum_r
+        except:
+            print('Ошибка деления на ноль')
+        # Расчет солнечной радиации
+        energy = dict()
+        for elem in self.elements:
+            area = elem.get_area_azimut()
+            for key in self.orientation:
+                if key in area:
+                   energy[key] += solar_dict[key] * area[key]
 
 
 class Layer:
@@ -42,7 +195,8 @@ class Layer:
             if key in self.__dict__.keys():
                 self.__dict__[key] = data[key]
 
-class Construction:
+
+class Construction(BaseConstruction):
     typ_surface_int = ['стен, полов, гладких потолков, потолков с выступающими ребрами при отношении высоты h ребер к расстоянию а между гранями соседних ребер h/a < 0,3',
                        'потолков с выступающими ребрами при отношении h/a > 0,3', 'окон', 'зенитных фонарей']
     typ_surface_ext = ['наружных стен, покрытий, перекрытий над проездами и над холодными (без ограждающих стенок) подпольями в Северной строительно-климатической зоне.',
@@ -52,32 +206,14 @@ class Construction:
     list_alfa_int = [8.7, 7.6, 8.0, 9.9]
     list_alfa_ext = [23, 17, 12, 6]
     def __init__(self):
-        self.typ = ''
-        self.name = ''
-        self.area = 0.0
+        super().__init__()
         self.alfa_int = 8.7
         self.alfa_ext = 23
         self.r_neodn = 1.0
         self.ro = 0.0
-        self.r_pr = 0.0
-        self.r_tr = 0.0
-        self.r_tr_min = 0.0
         self.b = 0.0
         self.y_int = 0.0
-        self.layer = []
         self.add_layer('', 0.0, 0.0, 0.0)
-
-    def get_construction_name(self):
-        """Генерация имени конструкции для дерева"""
-        elem_text = ''
-        if len(self.name) > 20:
-            elem_text = self.name
-        else:
-            if len(self.name) == 0:
-                elem_text = self.typ
-            else:
-                elem_text = self.typ + ' - ' + self.name
-        return elem_text
 
     def add_layer(self, name='', thickness=0.0, lam=0.0, s=0.0):
         new_layer = Layer(name)
@@ -85,12 +221,12 @@ class Construction:
         new_layer.thickness = thickness
         new_layer.lam = lam
         new_layer.s = s
-        self.layer.append(new_layer)
+        self.elements.append(new_layer)
 
     def calc(self):
         """Расчет сопротивления теплопередаче конструкции"""
         rk = 0.0
-        for i, elem in enumerate(self.layer):
+        for i, elem in enumerate(self.elements):
             elem.calc()
             if elem.thickness > 0.00001 and elem.lam > 0.00001:
                 rk += elem.r
@@ -106,7 +242,7 @@ class Construction:
         rk = 0.0
         s_letters = ''
         s_numbers = ''
-        for i, elem in enumerate(self.layer):
+        for i, elem in enumerate(self.elements):
             if elem.thickness > 0.00001 and elem.lam > 0.00001:
                 s_index = get_string_index(i+1)
                 s_numbers += f' + {elem.thickness/1000}/{elem.lam}'
@@ -132,32 +268,6 @@ class Construction:
         s += f'а именно {self.r_pr} м²·ºС/Вт {s_znak} {self.r_tr} м²·ºС/Вт, следовательно, требование п. 5.1 {s_usl}выполняется.'
         return s
 
-    def get_dict(self) -> dict:
-        """Генерация словаря с данными
-        :return - словарь"""
-        data = dict()
-        for key in self.__dict__:
-            if key == 'layer':
-                layers = []
-                for elem in self.__dict__[key]:
-                    layers.append(elem.get_dict())
-                data[key] = layers
-            else:
-                data[key] = self.__dict__[key]
-        return data
-
-    def data_from_dict(self, data: dict):
-        """Загрузка данных из словаря"""
-        for key in data:
-            if key == 'layer':
-                self.layer.clear()
-                for i, con in enumerate(data[key]):
-                    self.add_layer()
-                    self.layer[i].data_from_dict(con)
-            else:
-                if key in self.__dict__.keys():
-                    self.__dict__[key] = data[key]
-
 
 class Building:
     typ_constr = ['Наружная стена', 'Покрытие', 'Чердачное перекрытие', 'Перекрытие над холодным подвалом',
@@ -167,6 +277,8 @@ class Building:
                      "Общежитие", "Общественное", "Административное", "Сервисного обслуживания", "Бытовое",
                      "Производственное и другое с влажным или мокрым режимом эксплуатации",
                      "Производственное с сухим и нормальным режимом эксплуатации"]
+    latitude_list = [37, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62, 64, 66, 68, 70, 72, 74, 76, 78]
+    orientation = ['С', 'З', 'Ю', 'В', 'СЗ', 'СВ', 'ЮЗ', 'ЮВ']
 
     def __init__(self):
         self.typ = 'Жилое'
@@ -185,16 +297,86 @@ class Building:
         self.citi = 'Волгоград'
         self.t_nhp = 0.0
         self.t_ot = 0.0
-        self.z_ot = 0.0
+        self.z_ot = 0
         self.gsop = 0.0
+        self.solar_citi = 'Волгоград'
+        self.latitude = 48
+        self.solar_energy = dict()
         self.constructions = []
-        self.add_construction('Наружная стена', '')
+        self.solar_citi_dict = load_solar_radiation('solar_radiation.xlsx')
+        self.orientation_coef = load_orientation_coef('solar_radiation.xlsx')
 
-    def add_construction(self, typ: str, name: str):
-        con = Construction()
+        self.add_construction(typ='Наружная стена', name='')
+
+    def add_construction(self, typ: str, name: str, index=0):
+        """Добавление новой конструции в список"""
+        if typ in ['Наружная стена', 'Покрытие', 'Чердачное перекрытие',
+                   'Перекрытие над холодным подвалом', 'Перекрытие над проездом']:
+            con = Construction()
+            con.name = name
+        elif typ in ['Окна', 'Витражи', 'Фонари']:
+            con = Windows()
+        elif typ in ['Двери', 'Ворота']:
+            con = Doors()
         con.typ = typ
-        con.name = name
-        self.constructions.append(con)
+        if index < (len(self.constructions) - 1):
+            self.constructions.insert(index+1, con)
+        else:
+            self.constructions.append(con)
+
+    def copy_construction(self, index=0):
+        """Копирование выделенной конструкции"""
+        elem = copy(self.constructions[index])
+        if index < (len(self.constructions) - 1):
+            self.constructions.insert(index + 1, elem)
+        else:
+            self.constructions.append(elem)
+
+    def del_construction(self, index=0):
+        """Удаление выделенной конструкции"""
+        if len(self.constructions) > 1:
+            self.constructions.pop(index)
+
+    def change_typ(self, new_typ: str, index=0):
+        """Смена типа конструкции
+        :param
+        new_typ - новое название конструкции
+        index - номер авктивной конструкции"""
+        if new_typ in ['Наружная стена', 'Покрытие', 'Чердачное перекрытие',
+                   'Перекрытие над холодным подвалом', 'Перекрытие над проездом']:
+            con = Construction()
+            con.name = ''
+        elif new_typ in ['Окна', 'Витражи', 'Фонари']:
+            con = Windows()
+        elif new_typ in ['Двери', 'Ворота']:
+            con = Doors()
+        con.typ = new_typ
+        self.constructions[index] = con
+
+    def calc_solar_radiation(self):
+        """Расчет солнечной радиации для каждого азимута"""
+        n = self.z_ot // 60
+        ost = int((self.z_ot % 60) / 2)
+        self.solar_energy = dict()
+        # Определение коэффициентов по широте и ориентации
+        coef = dict()
+        for key in self.orientation:
+            coef[key] = self.orientation_coef[key][self.latitude]
+        # Расчет параметров радиации на горизонтальную поверхность в отопительный период
+        sol = dict()
+        for key in self.solar_citi_dict[self.solar_citi]:
+            sol[key] = [0] * 12
+            for i in range(12):
+                if i < n or i > (11 - n):
+                    sol[key][i] += self.solar_citi_dict[self.solar_citi][key][i]
+                elif i == n or i == (11 - n):
+                    sol[key][i] += self.solar_citi_dict[self.solar_citi][key][i] * ost/30
+        # Пересчет в вертикальную поверхность по азимутам
+        for key in self.orientation:
+            q = 0
+            for i in range(12):
+                q += sol['S'][i] * coef[key][i] + sol['D'][i] / 2 + sol['I'][i] * sol['A'][i] / 200
+            self.solar_energy[key] = q
 
     def calc(self):
         # расчет температуры точки росы
@@ -202,6 +384,8 @@ class Building:
                      (17.27 - (17.27 * self.t_int / (237.7 + self.t_int) + log(self.w_int / 100))), 1)
         # расчет значения ГСОП
         self.gsop = round((self.t_int - self.t_ot) * self.z_ot, 2)
+        # Расчет солнечной радиации
+        self.calc_solar_radiation()
         # расчет нормативных сопротивлений теплопередаче
         self.calc_norm()
         for con in self.constructions:
@@ -209,6 +393,8 @@ class Building:
             if con_typ in self.norm:
                 con.r_tr = self.norm[con_typ]['Rtr']
                 con.r_tr_min = self.norm[con_typ]['Rmin']
+            if con_typ in ['Окна', 'Витражи', 'Фонари']:
+                con.calc(self.solar_energy)
             con.calc()
 
     def calc_norm(self):

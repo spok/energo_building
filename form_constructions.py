@@ -1,9 +1,8 @@
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QComboBox, QPushButton, QMessageBox, QWidget
+from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QComboBox, QPushButton, QWidget
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt
 from PyQt5.Qt import QStandardItem
 from construction import Construction, Building
-from copy import copy
 
 
 class Constructions(QWidget):
@@ -12,6 +11,7 @@ class Constructions(QWidget):
     def __init__(self, parent=None, tree_nod=None, building=None):
         super().__init__()
         self.nod_constr = tree_nod
+        self.building = building
         self.list_constr = building.constructions
         vbox_tab2 = QVBoxLayout(parent)
         self.table_cons = QTableWidget()
@@ -86,46 +86,29 @@ class Constructions(QWidget):
         """Смена названия конструкции"""
         index = self.table_cons.currentRow()
         self.list_constr[index].name = self.table_cons.item(index, 1).text()
-        node = self.nod_constr.child(index)
-        node.setText(self.list_constr[index].get_construction_name())
+        self.nod_constr.child(index).setText(self.list_constr[index].get_construction_name())
 
     def change_typ_constr(self):
         """Смена типа конструкции в таблице"""
         index = self.table_cons.currentRow()
-        elem = self.table_cons.cellWidget(index, 0)
-        self.list_constr[index].typ = elem.currentText()
+        new_typ = self.table_cons.cellWidget(index, 0).currentText()
+        self.building.change_typ(new_typ=new_typ, index=index)
         node = self.nod_constr.child(index)
         node.setText(self.list_constr[index].get_construction_name())
 
     def add_constr(self):
-        """Добавление пустой конструкции под активной конструкции"""
+        """Добавление пустой конструкции"""
         cur = self.table_cons.currentRow()
-        elem = Construction()
-        elem.typ = 'Наружная стена'
-        if cur < (self.table_cons.rowCount() - 1):
-            self.list_constr.insert(cur + 1, elem)
-        else:
-            self.list_constr.append(elem)
+        self.building.add_construction(typ='Наружная стена', name='', index=cur)
         self.draw_table()
 
     def copy_constr(self):
         """Создание копии активной конструкции"""
         cur = self.table_cons.currentRow()
-        elem = copy(self.list_constr[cur])
-        if cur < (self.table_cons.rowCount() - 1):
-            self.list_constr.insert(cur + 1, elem)
-        else:
-            self.list_constr.append(elem)
+        self.building.copy_construction(index=cur)
         self.draw_table()
 
     def del_constr(self):
         """Удаление текущей конструкции"""
-        if self.table_cons.rowCount() > 1:
-            cur = self.table_cons.currentRow()
-            try:
-                self.list_constr.pop(cur)
-            except ValueError:
-                QMessageBox.about(self, "Ошибка", "Ошибка при удалении конструкции")
-            self.draw_table()
-        else:
-            QMessageBox.about(self, "Ошибка", "Должна остаться одна конструкция")
+        cur = self.table_cons.currentRow()
+        self.building.del_construction(cur)
