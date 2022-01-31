@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QComboB
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt
 from PyQt5.Qt import QStandardItem
-from construction import Construction, Building
+from construction_class.building import Building
 
 
 class Constructions(QWidget):
@@ -36,50 +36,21 @@ class Constructions(QWidget):
         self.table_cons.blockSignals(True)
         self.table_cons.clear()
         self.table_cons.setHorizontalHeaderLabels(self.hor_headers)
-        if len(self.list_constr) > 0:
-            self.table_cons.setRowCount(len(self.list_constr))
-            # очистка конструкции в дереве проекта
-            self.nod_constr.removeRows(0, self.nod_constr.rowCount())
-            for i, elem in enumerate(self.list_constr):
-                if type(elem) is Construction:
-                    # добавление элемента с списком конструкций
-                    elem_typ = QComboBox()
-                    elem_typ.addItems(Building.typ_constr)
-                    elem_typ.setCurrentText(elem.typ)
-                    self.table_cons.setCellWidget(i, 0,  elem_typ)
-                    elem_typ.activated.connect(self.change_typ_constr)
-                    # добавление элемента с названием конструкции
-                    self.table_cons.setItem(i, 1, QTableWidgetItem(elem.name))
-                    # добавление элемента с сопротивлением конструкции
-                    el = QTableWidgetItem(str(elem.r_pr))
-                    el.setTextAlignment(Qt.AlignRight)
-                    el.setTextAlignment(Qt.AlignVCenter)
-                    self.table_cons.setItem(i, 2, el)
-                    # добавление кнопки для добавления конструкции
-                    el_but = QPushButton()
-                    el_but.setToolTip('Добавить пустую конструкцию')
-                    el_icon = QIcon('add.png')
-                    el_but.setIcon(el_icon)
-                    el_but.clicked.connect(self.add_constr)
-                    self.table_cons.setCellWidget(i, 3, el_but)
-                    # добавление кнопки для копирования конструкции
-                    el_but = QPushButton()
-                    el_but.setToolTip('Сделать копию конструкции')
-                    el_icon = QIcon('copy.png')
-                    el_but.setIcon(el_icon)
-                    el_but.clicked.connect(self.copy_constr)
-                    self.table_cons.setCellWidget(i, 4, el_but)
-                    # добавление кнопки для удаления конструкции
-                    el_but = QPushButton()
-                    el_but.setToolTip('Удалить конструкцию')
-                    el_icon = QIcon('minus.png')
-                    el_but.setIcon(el_icon)
-                    el_but.clicked.connect(self.del_constr)
-                    self.table_cons.setCellWidget(i, 5, el_but)
-                    # добавление элемента в дерево конструкций
-                    elem_nod = QStandardItem(elem.get_construction_name())
-                    elem_nod.setData(elem)
-                    self.nod_constr.appendRow(elem_nod)
+        self.building.draw_table(self.table_cons, self.nod_constr)
+        # Назначение элементам таблицы обработчики сигналов
+        for i in range(self.table_cons.rowCount()):
+            # обработчик списка типов конструкций
+            elem = self.table_cons.cellWidget(i, 0)
+            elem.activated.connect(self.change_typ_constr)
+            # обработчик кнопки добавить
+            elem = self.table_cons.cellWidget(i, 3)
+            elem.clicked.connect(self.add_constr)
+            # обработки кнопки копировать
+            elem = self.table_cons.cellWidget(i, 4)
+            elem.clicked.connect(self.copy_constr)
+            # обработки кнопки удалить
+            elem = self.table_cons.cellWidget(i, 5)
+            elem.clicked.connect(self.del_constr)
         self.table_cons.blockSignals(False)
 
     def set_construction_name(self):

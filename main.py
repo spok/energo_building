@@ -5,7 +5,8 @@ from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtCore import QSize
 from PyQt5.Qt import QStandardItemModel, QStandardItem
 from func import to_dot, load_excel, MyCombo
-from construction import Building, Construction
+from construction_class.building import Building
+from construction_class.construction import Construction
 import gui_form
 import form_cities
 import form_constructions

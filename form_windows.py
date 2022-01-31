@@ -1,8 +1,9 @@
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, \
     QTextEdit, QPushButton, QMessageBox, QWidget
 from PyQt5.QtGui import QIcon
+from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QSize
-from construction import Windows, WindowElement
+from construction_class.windows import *
 from func import to_float, load_windows_koef, MyCombo
 
 
@@ -72,34 +73,42 @@ class Windows(QWidget):
                     # добавление элемента с сопротивлением теплопередаче
                     self.table_windows.setItem(i, 0, QTableWidgetItem(str(elem.r_pr)))
                     self.table_windows.setItem(i, 1, QTableWidgetItem('('))
+                    cell_item = self.table_windows.item(i, 1)
+                    if cell_item:
+                        cell_item.setFlags(cell_item.flags() ^ QtCore.Qt.ItemIsEditable)
                     # добавление элемента с площадью окон
                     el = QTableWidgetItem(str(elem.area))
                     el.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
                     self.table_windows.setItem(i, 2, el)
                     self.table_windows.setItem(i, 3, QTableWidgetItem('+'))
+                    cell_item = self.table_windows.item(i, 3)
+                    if cell_item:
+                        cell_item.setFlags(cell_item.flags() ^ QtCore.Qt.ItemIsEditable)
                     # добавление элемента с размерами окна
                     el = QTableWidgetItem(elem.size)
                     el.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
                     self.table_windows.setItem(i, 4, el)
                     self.table_windows.setItem(i, 5, QTableWidgetItem(')*'))
+                    cell_item = self.table_windows.item(i, 5)
+                    if cell_item:
+                        cell_item.setFlags(cell_item.flags() ^ QtCore.Qt.ItemIsEditable)
                     # добавление количество элементов для каждой ориентации
-                    if len(elem.count_orientation) > 0:
-                        for key in elem.count_orientation:
-                            index = self.current_windows.orientation.index[key]
-                            el = QTableWidgetItem(str(elem.count_orientation[key]))
-                            el.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-                            self.table_windows.setItem(i, 6 + index, el)
+                    for key in elem.count_orientation:
+                        index = self.current_windows.orientation.index(key)
+                        el = QTableWidgetItem(str(elem.count_orientation[key]))
+                        el.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                        self.table_windows.setItem(i, 6 + index, el)
                     # добавление кнопки для добавления пустого слоя
                     el_but = QPushButton()
                     el_but.setToolTip('Добавить строку')
-                    el_icon = QIcon('add.png')
+                    el_icon = QIcon('icon/add.png')
                     el_but.setIcon(el_icon)
                     el_but.clicked.connect(self.add_window)
                     self.table_windows.setCellWidget(i, 14, el_but)
                     # добавление кнопки для удаления активного слоя
                     el_but = QPushButton()
                     el_but.setToolTip('Удалить строку')
-                    el_icon = QIcon('minus.png')
+                    el_icon = QIcon('icon/minus.png')
                     el_but.setIcon(el_icon)
                     el_but.clicked.connect(self.delete_window)
                     self.table_windows.setCellWidget(i, 15, el_but)
@@ -114,23 +123,24 @@ class Windows(QWidget):
         # Сохранение изменений в таблице
         cur_row = self.table_windows.currentRow()
         if cur_row > -1:
-            current_window = self.current_construction.elements[cur_row]
+            current_window = self.current_windows.elements[cur_row]
             current_window.r = to_float(self.table_windows.item(cur_row, 0).text())
             current_window.area = to_float(self.table_windows.item(cur_row, 2).text())
             current_window.set_size(self.table_windows.item(cur_row, 4).text())
             # сохранение количества элементов по азимутам
-            for i, azimuth in enumerate(self.current_construction.orientation):
-                s = self.table_windows.item(cur_row, 6 + i).text()
-                if s != '':
-                    try:
-                        current_window.count_orientation[azimuth] = int(s)
-                    except:
-                        QMessageBox.about(self, "Ошибка", f"Неверно указано количество в строке {cur_row}")
-                        current_window.count_orientation[azimuth] = 0
+            for i, azimuth in enumerate(self.current_windows.orientation):
+                if self.table_windows.item(cur_row, 6 + i):
+                    s = self.table_windows.item(cur_row, 6 + i).text()
+                    if s != '':
+                        try:
+                            current_window.count_orientation[azimuth] = int(s)
+                        except:
+                            QMessageBox.about(self, "Ошибка", f"Неверно указано количество в строке {cur_row}")
+                            current_window.count_orientation[azimuth] = 0
                 else:
                     current_window.count_orientation[azimuth] = 0
         # Сохранение изменений в выпадающих списках
-        self.current_windows.construction_windows = self.windows_koef[self.combo_koef.currentText()]
+        self.current_windows.construction_windows =self.combo_koef.currentText()
         self.current_windows.tau_koef = self.windows_koef[self.combo_koef.currentText()][0]
         self.current_windows.g_koef = self.windows_koef[self.combo_koef.currentText()][1]
         # Пересчет конструкций

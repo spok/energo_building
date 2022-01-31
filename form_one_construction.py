@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QHBoxLa
     QTextEdit, QPushButton, QMessageBox, QWidget
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt, QSize
-from construction import Construction, Layer
+from construction_class.construction import *
 from func import to_float, MyCombo
 
 
@@ -111,35 +111,35 @@ class ConstructionLayer(QWidget):
                     # добавление кнопки для добавления пустого слоя
                     el_but = QPushButton()
                     el_but.setToolTip('Добавить пустой слой')
-                    el_icon = QIcon('add.png')
+                    el_icon = QIcon('icon/add.png')
                     el_but.setIcon(el_icon)
                     el_but.clicked.connect(self.add_layer)
                     self.table_layer.setCellWidget(i, 4, el_but)
                     # добавление кнопки для удаления активного слоя
                     el_but = QPushButton()
                     el_but.setToolTip('Удалить слой')
-                    el_icon = QIcon('minus.png')
+                    el_icon = QIcon('icon/minus.png')
                     el_but.setIcon(el_icon)
                     el_but.clicked.connect(self.delete_layer)
                     self.table_layer.setCellWidget(i, 5, el_but)
                     # добавление кнопки для открытия базы материалов
                     el_but = QPushButton()
                     el_but.setToolTip('Открыть базу материалов')
-                    el_icon = QIcon('base.png')
+                    el_icon = QIcon('icon/base.png')
                     el_but.setIcon(el_icon)
                     el_but.clicked.connect(self.show_base)
                     self.table_layer.setCellWidget(i, 6, el_but)
                     # добавление кнопки для перемещения слоя вверх
                     el_but = QPushButton()
                     el_but.setToolTip('Переместить слой вверх')
-                    el_icon = QIcon('up.png')
+                    el_icon = QIcon('icon/up.png')
                     el_but.setIcon(el_icon)
                     el_but.clicked.connect(self.move_up)
                     self.table_layer.setCellWidget(i, 7, el_but)
                     # добавление кнопки для перемещения слоя вниз
                     el_but = QPushButton()
                     el_but.setToolTip('Переместить слой вниз')
-                    el_icon = QIcon('down.png')
+                    el_icon = QIcon('icon/down.png')
                     el_but.setIcon(el_icon)
                     el_but.clicked.connect(self.move_down)
                     self.table_layer.setCellWidget(i, 8, el_but)
