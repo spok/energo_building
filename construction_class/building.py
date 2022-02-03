@@ -1,13 +1,15 @@
 from math import log
 from copy import copy
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QComboBox, QPushButton, QWidget
-from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QComboBox
 from PyQt5.QtCore import Qt
 from PyQt5.Qt import QStandardItem
-from func import get_string_index, r_unit, alfa_unit, l_unit, load_solar_radiation, load_orientation_coef
+from func import get_string_index, r_unit, alfa_unit, l_unit, to_float, \
+    load_solar_radiation, load_orientation_coef, MyCombo
 from construction_class.construction import *
 from construction_class.windows import *
 from construction_class.doors import *
+from construction_class.ground import *
+
 
 class Building:
     typ_constr = ['Наружная стена', 'Покрытие', 'Чердачное перекрытие', 'Перекрытие над холодным подвалом',
@@ -19,6 +21,7 @@ class Building:
                      "Производственное с сухим и нормальным режимом эксплуатации"]
     latitude_list = [37, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62, 64, 66, 68, 70, 72, 74, 76, 78]
     orientation = ['С', 'З', 'Ю', 'В', 'СЗ', 'СВ', 'ЮЗ', 'ЮВ']
+    purposes = ['Ограждающая', 'Внутреняя чердака', 'Наружная чердака', 'Внутреняя подвала', 'Наружная подвала']
 
     def __init__(self):
         self.typ = 'Жилое'
@@ -43,8 +46,10 @@ class Building:
         self.latitude = 48
         self.solar_energy = dict()
         self.constructions = []
-        self.solar_citi_dict = load_solar_radiation('solar_radiation.xlsx')
-        self.orientation_coef = load_orientation_coef('solar_radiation.xlsx')
+        self.k_ob = 0.0
+        self.sum_nAR = 0.0
+        self.solar_citi_dict = load_solar_radiation()
+        self.orientation_coef = load_orientation_coef()
 
         self.add_construction(typ='Наружная стена', name='')
 
@@ -58,6 +63,8 @@ class Building:
             con = Windows()
         elif typ in ['Двери', 'Ворота']:
             con = Doors()
+        elif typ == 'Конструкция в контакте с грунтом':
+            con = Grounds()
         con.typ = typ
         if index < (len(self.constructions) - 1):
             self.constructions.insert(index+1, con)
@@ -90,8 +97,20 @@ class Building:
             con = Windows()
         elif new_typ in ['Двери', 'Ворота']:
             con = Doors()
+        elif new_typ == ['Двери', 'Ворота']:
+            con = Doors()
+        elif new_typ == 'Конструкция в контакте с грунтом':
+            con = Grounds()
         con.typ = new_typ
         self.constructions[index] = con
+
+    def change_purpose(self, new_typ: str, index=0):
+        """Смена типа конструкции
+        :param
+        new_typ - новое назначение конструкции
+        index - номер авктивной конструкции"""
+        if new_typ in self.purposes:
+            self.constructions[index].purpose = new_typ
 
     def calc_solar_radiation(self):
         """Расчет солнечной радиации для каждого азимута"""
@@ -128,6 +147,7 @@ class Building:
         self.calc_solar_radiation()
         # расчет нормативных сопротивлений теплопередаче
         self.calc_norm()
+        # расчет сопротивлений теплопередаче конструкций
         for con in self.constructions:
             con_typ = con.typ
             if con_typ in self.norm:
@@ -137,6 +157,60 @@ class Building:
                 con.calc(self.solar_energy)
             else:
                 con.calc()
+        # расчет технических этажей
+        ar_basement = [0.0] * 2
+        ar_attic = [0.0] * 2
+        for con in self.constructions:
+            con_purpose = con.purpose
+            con.t_ext = self.t_ot
+            if con_purpose == 'Внутреняя подвала':
+                try:
+                    ar_basement[0] += con.area / con.r_pr
+                except ZeroDivisionError:
+                    pass
+            elif con_purpose == 'Наружная подвала':
+                try:
+                    ar_basement[1] += con.area / con.r_pr
+                except ZeroDivisionError:
+                    pass
+            elif con_purpose == 'Внутреняя чердака':
+                try:
+                    ar_attic[0] += con.area / con.r_pr
+                except ZeroDivisionError:
+                    pass
+            elif con_purpose == 'Наружная чердака':
+                try:
+                    ar_attic[1] += con.area / con.r_pr
+                except ZeroDivisionError:
+                    pass
+        try:
+            t_basement = (ar_basement[0] * self.t_int + ar_basement[1] * self.t_ot) / sum(ar_basement)
+        except ZeroDivisionError:
+            t_basement = self.t_ot
+        try:
+            t_attic = (ar_attic[0] * self.t_int + ar_attic[1] * self.t_ot) / sum(ar_attic)
+        except ZeroDivisionError:
+            t_attic = self.t_ot
+        # Назначение температур наружной среды для конструкций и расчет коэффициента
+        self.sum_nAR = 0.0
+        for con in self.constructions:
+            con_purpose = con.purpose
+            if con_purpose in ['Внутреняя подвала', 'Внутреняя чердака']:
+                if con_purpose == 'Внутреняя подвала':
+                    con.t_ext = t_basement
+                elif con_purpose == 'Внутреняя чердака':
+                    con.t_ext = t_attic
+                con.n_coef = (self.t_int - con.t_ext) / (self.t_int - self.t_ot)
+                con.r_tr = con.r_tr * con.n_coef
+            else:
+                con.t_ext = self.t_ot
+                con.n_coef = 1.0
+            if con_purpose in ['Внутреняя подвала', 'Внутреняя чердака', 'Ограждающая']:
+                try:
+                    con.nAR = con.n_coef * con.area / con.r_pr
+                except ZeroDivisionError:
+                    con.nAR = 0.0
+                self.sum_nAR += con.nAR
 
     def calc_norm(self):
         """Расчет нормативных сопротивлений теплопопередаче для всех типов конструкций"""
@@ -335,42 +409,80 @@ class Building:
         :param
         table - таблица конструкций QTableWidget
         tree - список конструкции QTreeView"""
+        self.calc()
         if len(self.constructions) > 0:
             table.setRowCount(len(self.constructions))
             # очистка конструкции в дереве проекта
             tree.removeRows(0, tree.rowCount())
             for i, elem in enumerate(self.constructions):
                 # добавление элемента с списком конструкций
-                elem_typ = QComboBox()
-                elem_typ.addItems(Building.typ_constr)
+                elem_typ = MyCombo(self.typ_constr)
                 elem_typ.setCurrentText(elem.typ)
                 table.setCellWidget(i, 0,  elem_typ)
                 # добавление элемента с названием конструкции
                 table.setItem(i, 1, QTableWidgetItem(elem.name))
+                # добавление элемента с площадью конструкции
+                table.setItem(i, 2, QTableWidgetItem(str(elem.area)))
+                table.item(i, 2).setTextAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
                 # добавление элемента с сопротивлением конструкции
                 el = QTableWidgetItem(str(elem.r_pr))
-                el.setTextAlignment(Qt.AlignRight)
-                el.setTextAlignment(Qt.AlignVCenter)
-                table.setItem(i, 2, el)
+                table.setItem(i, 3, el)
+                table.item(i, 3).setTextAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+                # добавление элемента с назначением конструкции
+                elem_typ = MyCombo(self.purposes)
+                elem_typ.setCurrentText(elem.purpose)
+                table.setCellWidget(i, 4,  elem_typ)
                 # добавление кнопки для добавления конструкции
                 el_but = QPushButton()
                 el_but.setToolTip('Добавить пустую конструкцию')
                 el_icon = QIcon('icon/add.png')
                 el_but.setIcon(el_icon)
-                table.setCellWidget(i, 3, el_but)
+                table.setCellWidget(i, 5, el_but)
                 # добавление кнопки для копирования конструкции
                 el_but = QPushButton()
                 el_but.setToolTip('Сделать копию конструкции')
                 el_icon = QIcon('icon/copy.png')
                 el_but.setIcon(el_icon)
-                table.setCellWidget(i, 4, el_but)
+                table.setCellWidget(i, 6, el_but)
                 # добавление кнопки для удаления конструкции
                 el_but = QPushButton()
                 el_but.setToolTip('Удалить конструкцию')
                 el_icon = QIcon('icon/minus.png')
                 el_but.setIcon(el_icon)
-                table.setCellWidget(i, 5, el_but)
+                table.setCellWidget(i, 7, el_but)
                 # добавление элемента в дерево конструкций
                 elem_nod = QStandardItem(elem.get_construction_name())
                 elem_nod.setData(elem)
                 tree.appendRow(elem_nod)
+
+    def draw_table_specif(self, table: object):
+        """Перерисовка таблицы с расчетом теплофизической характеристики
+        :param
+        table - таблица конструкций QTableWidget"""
+        self.calc()
+        if len(self.constructions) > 0:
+            table.setRowCount(len(self.constructions))
+            for i, elem in enumerate(self.constructions):
+                # добавление названия конструкции
+                table.setItem(i, 0, QTableWidgetItem(elem.get_construction_name()))
+                table.setItem(i, 1, QTableWidgetItem(str(self.t_int)))
+                table.item(i, 1).setTextAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+                table.setItem(i, 2, QTableWidgetItem(str(elem.t_ext)))
+                table.item(i, 2).setTextAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+                table.setItem(i, 3, QTableWidgetItem(str(elem.n_coef)))
+                table.item(i, 3).setTextAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+                table.setItem(i, 4, QTableWidgetItem(str(elem.area)))
+                table.item(i, 4).setTextAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+                table.setItem(i, 5, QTableWidgetItem(str(elem.r_pr)))
+                table.item(i, 5).setTextAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+                table.setItem(i, 6, QTableWidgetItem(str(round(elem.nAR, 2))))
+                table.item(i, 6).setTextAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+                s = 0.0
+                try:
+                    s = round(elem.nAR/self.sum_nAR*100, 2)
+                except ZeroDivisionError:
+                    s = 0
+                table.setItem(i, 7, QTableWidgetItem(str(s)))
+                table.item(i, 7).setTextAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+
+

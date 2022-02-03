@@ -12,6 +12,9 @@ import form_cities
 import form_constructions
 import form_one_construction
 import form_windows
+import form_doors
+import form_grounds
+import form_specif
 
 
 class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow):
@@ -51,7 +54,7 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         self.tab_osn.setCellWidget(0, 0, self.combo_cities)
         # добавление кнопки для открытия окна с городами
         self.show_cities = QtWidgets.QPushButton('...')
-        self.cities = load_excel('cities.xlsx')
+        self.cities = load_excel()
         for i in self.cities:
             self.name_cities.append(i[0])
             self.combo_cities.addItem(i[0], i)
@@ -94,9 +97,11 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         base = QStandardItem('Основные сведения')
         norm = QStandardItem('Нормативные требования')
         self.constructions_node = QStandardItem('Конструкции')
+        spec = QStandardItem('Теплофизическая характеристика')
         rootNode.appendRow(base)
         rootNode.appendRow(norm)
         rootNode.appendRow(self.constructions_node)
+        rootNode.appendRow(spec)
         self.tree.setModel(treeModel)
         self.tree.expandAll()
 
@@ -109,6 +114,15 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
 
         # создание формы для окон и витражей
         self.tab_windows = form_windows.Windows(self.vbox3)
+
+        # создание формы для дверей и ворот
+        self.tab_doors = form_doors.Doors(self.vbox4)
+
+        # создание формы для конструкций в грунте
+        self.tab_grounds = form_grounds.Grounds(self.vbox5)
+
+        # создание формы для теплофизической характеристики
+        self.tab_specif = form_specif.Specifications(self.vbox6)
 
         # Обработка сигналов
         self.get_data_building()
@@ -155,8 +169,13 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
                 self.tab_windows.build_table(build=self.build, index=val.row())
             elif self.build.constructions[val.row()].typ in ['Двери', 'Ворота']:
                 self.tabWidget.setCurrentIndex(5)
+                self.tab_doors.build_table(build=self.build, index=val.row())
             elif self.build.constructions[val.row()].typ == 'Конструкция в контакте с грунтом':
                 self.tabWidget.setCurrentIndex(6)
+                self.tab_grounds.build_table(build=self.build, index=val.row())
+        elif val.data() == "Теплофизическая характеристика":
+            self.tabWidget.setCurrentIndex(7)
+            self.tab_specif.draw_table(building=self.build)
 
     def set_data_building(self):
         """Установка параметров здания из элементов формы"""

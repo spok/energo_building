@@ -3,11 +3,12 @@ from PyQt5.QtWidgets import QComboBox, QListView
 from PyQt5.QtCore import QStringListModel
 
 
-def load_excel(fname: str) -> list:
+def load_excel() -> list:
     """Загрузка данных из файла Excel, fname - полный путь к файлу"""
     # ссылка на лист в таблице
+    fname = 'data.xlsx'
     wb = load_workbook(fname)
-    sheet = wb.worksheets[0]
+    sheet = wb.get_sheet_by_name(name = 'climat')
     # количество заполненных строк
     max_row = sheet.max_row
     # чтение данных
@@ -20,12 +21,13 @@ def load_excel(fname: str) -> list:
     return data_cities
 
 
-def load_windows_koef(fname: str) -> dict:
+def load_windows_koef() -> dict:
     """Загрузка характеристик окон из файла Excel, fname - полный путь к файлу
     :return - словарь key = тип стеклопакета, list = коэффициенты"""
+    fname = 'data.xlsx'
     # ссылка на лист в таблице
     wb = load_workbook(fname)
-    sheet = wb.worksheets[0]
+    sheet = wb.get_sheet_by_name(name = 'windows')
     # количество заполненных строк
     max_row = sheet.max_row
     # чтение данных
@@ -39,13 +41,14 @@ def load_windows_koef(fname: str) -> dict:
     return data_windows
 
 
-def load_solar_radiation(fname: str) -> dict:
+def load_solar_radiation() -> dict:
     """Загрузка солнечной радиации из файла Excel, fname - полный путь к файлу
     :return - словарь key = название города -> key - название параметра -> list - значения"""
+    fname = 'data.xlsx'
     data = dict()
     wb = load_workbook(fname)
     # загрузка солнечной радиации для городов
-    sheet = wb.worksheets[0]
+    sheet = wb.get_sheet_by_name(name = 'solar')
     max_row = sheet.max_row
     for i in range(1, max_row + 1):
         citi = sheet.cell(row=i, column=1).value
@@ -63,13 +66,14 @@ def load_solar_radiation(fname: str) -> dict:
     return data
 
 
-def load_orientation_coef(fname: str) -> dict:
+def load_orientation_coef() -> dict:
     """Загрузка коэфициентов ориентации из файла Excel, fname - полный путь к файлу
     :return - словарь key - ориентация -> key - широта -> list - значения"""
+    fname = 'data.xlsx'
     data = dict()
     wb = load_workbook(fname)
     # загрузка солнечной радиации для городов
-    sheet = wb.worksheets[1]
+    sheet = wb.get_sheet_by_name(name = 'coef')
     max_row = sheet.max_row
     for i in range(1, max_row + 1):
         azimut = sheet.cell(row=i, column=1).value
@@ -103,7 +107,6 @@ def to_float(s: str) -> float:
         print('Некореткно указано значение')
         x = 0
     return x
-
 
 
 def get_string_index(index: int) -> str:

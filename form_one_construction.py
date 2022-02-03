@@ -90,59 +90,23 @@ class ConstructionLayer(QWidget):
         self.coef_r.blockSignals(True)
         self.table_layer.clear()
         self.table_layer.setHorizontalHeaderLabels(self.hor_headers)
-        if len(self.current_construction.elements) > 0:
-            self.table_layer.setRowCount(len(self.current_construction.elements))
-            for i, elem in enumerate(self.current_construction.elements):
-                if type(elem) is Layer:
-                    # добавление элемента с названием слоя
-                    self.table_layer.setItem(i, 0, QTableWidgetItem(elem.name))
-                    # добавление элемента с толщиной слоя
-                    el = QTableWidgetItem(str(elem.thickness))
-                    el.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-                    self.table_layer.setItem(i, 1, el)
-                    # добавление элемента с коэффициентом теплопроводности
-                    el = QTableWidgetItem(str(elem.lam))
-                    el.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-                    self.table_layer.setItem(i, 2, el)
-                    # добавление элемента с коэффициентом теплопроводности
-                    el = QTableWidgetItem(str(elem.s))
-                    el.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-                    self.table_layer.setItem(i, 3, el)
-                    # добавление кнопки для добавления пустого слоя
-                    el_but = QPushButton()
-                    el_but.setToolTip('Добавить пустой слой')
-                    el_icon = QIcon('icon/add.png')
-                    el_but.setIcon(el_icon)
-                    el_but.clicked.connect(self.add_layer)
-                    self.table_layer.setCellWidget(i, 4, el_but)
-                    # добавление кнопки для удаления активного слоя
-                    el_but = QPushButton()
-                    el_but.setToolTip('Удалить слой')
-                    el_icon = QIcon('icon/minus.png')
-                    el_but.setIcon(el_icon)
-                    el_but.clicked.connect(self.delete_layer)
-                    self.table_layer.setCellWidget(i, 5, el_but)
-                    # добавление кнопки для открытия базы материалов
-                    el_but = QPushButton()
-                    el_but.setToolTip('Открыть базу материалов')
-                    el_icon = QIcon('icon/base.png')
-                    el_but.setIcon(el_icon)
-                    el_but.clicked.connect(self.show_base)
-                    self.table_layer.setCellWidget(i, 6, el_but)
-                    # добавление кнопки для перемещения слоя вверх
-                    el_but = QPushButton()
-                    el_but.setToolTip('Переместить слой вверх')
-                    el_icon = QIcon('icon/up.png')
-                    el_but.setIcon(el_icon)
-                    el_but.clicked.connect(self.move_up)
-                    self.table_layer.setCellWidget(i, 7, el_but)
-                    # добавление кнопки для перемещения слоя вниз
-                    el_but = QPushButton()
-                    el_but.setToolTip('Переместить слой вниз')
-                    el_icon = QIcon('icon/down.png')
-                    el_but.setIcon(el_icon)
-                    el_but.clicked.connect(self.move_down)
-                    self.table_layer.setCellWidget(i, 8, el_but)
+        self.current_construction.draw_table(table=self.table_layer)
+        for i in range(self.table_layer.rowCount()):
+            # добавление кнопки для добавления пустого слоя
+            el_but = self.table_layer.cellWidget(i, 4)
+            el_but.clicked.connect(self.add_layer)
+            # добавление кнопки для удаления активного слоя
+            el_but = self.table_layer.cellWidget(i, 5)
+            el_but.clicked.connect(self.delete_layer)
+            # добавление кнопки для открытия базы материалов
+            el_but = self.table_layer.cellWidget(i, 6)
+            el_but.clicked.connect(self.show_base)
+            # добавление кнопки для перемещения слоя вверх
+            el_but = self.table_layer.cellWidget(i, 7)
+            el_but.clicked.connect(self.move_up)
+            # добавление кнопки для перемещения слоя вниз
+            el_but = self.table_layer.cellWidget(i, 8)
+            el_but.clicked.connect(self.move_down)
         # вставка типов поверхностей конструкции
         self.combo_alfa_int.setCurrentIndex(Construction.list_alfa_int.index(self.current_construction.alfa_int))
         self.combo_alfa_ext.setCurrentIndex(Construction.list_alfa_ext.index(self.current_construction.alfa_ext))
@@ -178,20 +142,14 @@ class ConstructionLayer(QWidget):
 
     def add_layer(self):
         """Добавление нового слоя"""
-        self.current_construction.add_layer()
+        self.current_construction.add_layer(index=self.table_layer.currentRow())
         self.draw_table()
 
     def delete_layer(self):
         """Удаление активного слоя"""
         if self.table_layer.rowCount() > 1:
-            cur = self.table_layer.currentRow()
-            try:
-                self.current_construction.elements.pop(cur)
-            except ValueError:
-                QMessageBox.about(self, "Ошибка", "Ошибка при удалении слоя")
+            self.current_construction.del_layer(index=self.table_layer.currentRow())
             self.draw_table()
-        else:
-            QMessageBox.about(self, "Ошибка", "Должен остаться хотя бы один слой")
 
     def show_base(self):
         """Открыть окно с базой материалов"""
@@ -202,8 +160,7 @@ class ConstructionLayer(QWidget):
         if self.table_layer.rowCount() > 1:
             cur = self.table_layer.currentRow()
             if cur > 0:
-                move_element = self.current_construction.elements.pop(cur)
-                self.current_construction.elements.insert(cur - 1, move_element)
+                self.current_construction.move_up(index=cur)
                 self.table_layer.selectRow(cur - 1)
                 self.draw_table()
 
@@ -212,7 +169,6 @@ class ConstructionLayer(QWidget):
         if self.table_layer.rowCount() > 1:
             cur = self.table_layer.currentRow()
             if cur < self.table_layer.rowCount() - 1:
-                move_element = self.current_construction.elements.pop(cur)
-                self.current_construction.elements.insert(cur + 1, move_element)
+                self.current_construction.move_down(index=cur)
                 self.table_layer.selectRow(cur + 1)
                 self.draw_table()

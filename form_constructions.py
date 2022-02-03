@@ -3,10 +3,11 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt
 from PyQt5.Qt import QStandardItem
 from construction_class.building import Building
+from func import to_float
 
 
 class Constructions(QWidget):
-    hor_headers = ['Тип конструкции', 'Название конструкции', 'Ro', '', '', '']
+    hor_headers = ['Тип конструкции', 'Название конструкции', 'S, м²', 'Ro', 'Назначение', '', '', '']
 
     def __init__(self, parent=None, tree_nod=None, building=None):
         super().__init__()
@@ -15,21 +16,23 @@ class Constructions(QWidget):
         self.list_constr = building.constructions
         vbox_tab2 = QVBoxLayout(parent)
         self.table_cons = QTableWidget()
-        self.table_cons.setColumnCount(6)
+        self.table_cons.setColumnCount(8)
 
         self.table_cons.setHorizontalHeaderLabels(self.hor_headers)
         self.table_cons.horizontalHeader().setVisible(True)
-        self.table_cons.setColumnWidth(0, 250)
-        self.table_cons.setColumnWidth(1, 200)
-        self.table_cons.setColumnWidth(2, 50)
-        self.table_cons.setColumnWidth(3, 30)
-        self.table_cons.setColumnWidth(4, 30)
-        self.table_cons.setColumnWidth(5, 30)
+        self.table_cons.setColumnWidth(0, 150)
+        self.table_cons.setColumnWidth(1, 150)
+        self.table_cons.setColumnWidth(2, 60)
+        self.table_cons.setColumnWidth(3, 60)
+        self.table_cons.setColumnWidth(4, 150)
+        self.table_cons.setColumnWidth(5, 20)
+        self.table_cons.setColumnWidth(6, 20)
+        self.table_cons.setColumnWidth(7, 20)
         self.table_cons.setRowCount(1)
         for i in range(self.table_cons.columnCount()):
             self.table_cons.horizontalHeaderItem(i).setTextAlignment(Qt.AlignHCenter)
         vbox_tab2.addWidget(self.table_cons)
-        self.table_cons.itemChanged.connect(self.set_construction_name)
+        self.table_cons.itemChanged.connect(self.get_change)
 
     def draw_table(self):
         """перерисовка таблицы в соответствии с структурой конструкций"""
@@ -41,27 +44,38 @@ class Constructions(QWidget):
         for i in range(self.table_cons.rowCount()):
             # обработчик списка типов конструкций
             elem = self.table_cons.cellWidget(i, 0)
-            elem.activated.connect(self.change_typ_constr)
+            elem.activated.connect(self.change_typ)
+            # обработчик списка назначения конструкций
+            elem = self.table_cons.cellWidget(i, 4)
+            elem.activated.connect(self.get_change)
             # обработчик кнопки добавить
-            elem = self.table_cons.cellWidget(i, 3)
+            elem = self.table_cons.cellWidget(i, 5)
             elem.clicked.connect(self.add_constr)
             # обработки кнопки копировать
-            elem = self.table_cons.cellWidget(i, 4)
+            elem = self.table_cons.cellWidget(i, 6)
             elem.clicked.connect(self.copy_constr)
             # обработки кнопки удалить
-            elem = self.table_cons.cellWidget(i, 5)
+            elem = self.table_cons.cellWidget(i, 7)
             elem.clicked.connect(self.del_constr)
         self.table_cons.blockSignals(False)
 
-    def set_construction_name(self):
-        """Смена названия конструкции"""
+    def get_change(self):
+        """Получение изменений в таблице"""
         index = self.table_cons.currentRow()
-        self.list_constr[index].name = self.table_cons.item(index, 1).text()
-        self.nod_constr.child(index).setText(self.list_constr[index].get_construction_name())
+        if index > -1:
+            # Смена названия конструкции
+            self.list_constr[index].name = self.table_cons.item(index, 1).text()
+            self.nod_constr.child(index).setText(self.list_constr[index].get_construction_name())
+            # Получение площади конструкции
+            self.list_constr[index].area = to_float(self.table_cons.item(index, 2).text())
+            # Смена назначения конструкции в таблице
+            new_typ = self.table_cons.cellWidget(index, 4).currentText()
+            self.building.change_purpose(new_typ=new_typ, index=index)
 
-    def change_typ_constr(self):
-        """Смена типа конструкции в таблице"""
+    def change_typ(self):
+        """Смена типа конструкции с полным удалением предыдущей информации"""
         index = self.table_cons.currentRow()
+        # Смена типа конструкции в таблице
         new_typ = self.table_cons.cellWidget(index, 0).currentText()
         self.building.change_typ(new_typ=new_typ, index=index)
         node = self.nod_constr.child(index)

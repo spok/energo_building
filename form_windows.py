@@ -23,11 +23,11 @@ class Windows(QWidget):
         self.table_windows.setHorizontalHeaderLabels(self.hor_headers)
         self.table_windows.horizontalHeader().setVisible(True)
         self.table_windows.setColumnWidth(0, 70)
-        self.table_windows.setColumnWidth(1, 15)
+        self.table_windows.setColumnWidth(1, 10)
         self.table_windows.setColumnWidth(2, 70)
-        self.table_windows.setColumnWidth(3, 15)
+        self.table_windows.setColumnWidth(3, 10)
         self.table_windows.setColumnWidth(4, 70)
-        self.table_windows.setColumnWidth(5, 15)
+        self.table_windows.setColumnWidth(5, 10)
         self.table_windows.setColumnWidth(6, 20)
         self.table_windows.setColumnWidth(7, 20)
         self.table_windows.setColumnWidth(8, 20)
@@ -38,11 +38,12 @@ class Windows(QWidget):
         self.table_windows.setColumnWidth(13, 20)
         self.table_windows.setColumnWidth(14, 20)
         self.table_windows.setColumnWidth(15, 20)
+        self.table_windows.resizeColumnsToContents()
         self.vbox.addWidget(self.table_windows)
         # Настройка характеристик окон
         self.label2 = QLabel('Конструкция окон')
         self.vbox.addWidget(self.label2)
-        self.windows_koef = load_windows_koef('windows.xlsx')
+        self.windows_koef = load_windows_koef()
         self.combo_koef = MyCombo(self.windows_koef.keys())
         self.vbox.addWidget(self.combo_koef)
         # Элементы для вывода результатов
@@ -66,57 +67,21 @@ class Windows(QWidget):
         self.combo_koef.blockSignals(True)
         self.table_windows.clear()
         self.table_windows.setHorizontalHeaderLabels(self.hor_headers)
-        if len(self.current_windows.elements) > 0:
-            self.table_windows.setRowCount(len(self.current_windows.elements))
-            for i, elem in enumerate(self.current_windows.elements):
-                if type(elem) is WindowElement:
-                    # добавление элемента с сопротивлением теплопередаче
-                    self.table_windows.setItem(i, 0, QTableWidgetItem(str(elem.r_pr)))
-                    self.table_windows.setItem(i, 1, QTableWidgetItem('('))
-                    cell_item = self.table_windows.item(i, 1)
-                    if cell_item:
-                        cell_item.setFlags(cell_item.flags() ^ QtCore.Qt.ItemIsEditable)
-                    # добавление элемента с площадью окон
-                    el = QTableWidgetItem(str(elem.area))
-                    el.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-                    self.table_windows.setItem(i, 2, el)
-                    self.table_windows.setItem(i, 3, QTableWidgetItem('+'))
-                    cell_item = self.table_windows.item(i, 3)
-                    if cell_item:
-                        cell_item.setFlags(cell_item.flags() ^ QtCore.Qt.ItemIsEditable)
-                    # добавление элемента с размерами окна
-                    el = QTableWidgetItem(elem.size)
-                    el.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-                    self.table_windows.setItem(i, 4, el)
-                    self.table_windows.setItem(i, 5, QTableWidgetItem(')*'))
-                    cell_item = self.table_windows.item(i, 5)
-                    if cell_item:
-                        cell_item.setFlags(cell_item.flags() ^ QtCore.Qt.ItemIsEditable)
-                    # добавление количество элементов для каждой ориентации
-                    for key in elem.count_orientation:
-                        index = self.current_windows.orientation.index(key)
-                        el = QTableWidgetItem(str(elem.count_orientation[key]))
-                        el.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-                        self.table_windows.setItem(i, 6 + index, el)
-                    # добавление кнопки для добавления пустого слоя
-                    el_but = QPushButton()
-                    el_but.setToolTip('Добавить строку')
-                    el_icon = QIcon('icon/add.png')
-                    el_but.setIcon(el_icon)
-                    el_but.clicked.connect(self.add_window)
-                    self.table_windows.setCellWidget(i, 14, el_but)
-                    # добавление кнопки для удаления активного слоя
-                    el_but = QPushButton()
-                    el_but.setToolTip('Удалить строку')
-                    el_icon = QIcon('icon/minus.png')
-                    el_but.setIcon(el_icon)
-                    el_but.clicked.connect(self.delete_window)
-                    self.table_windows.setCellWidget(i, 15, el_but)
-
+        self.current_windows.draw_table(table=self.table_windows)
+        for i in range(self.table_windows.rowCount()):
+            # добавление кнопки для добавления пустого слоя
+            el_but = self.table_windows.cellWidget(i, 14)
+            el_but.clicked.connect(self.add_window)
+            # добавление кнопки для удаления активного слоя
+            el_but = self.table_windows.cellWidget(i, 15)
+            el_but.clicked.connect(self.delete_window)
         # вставка типа конструкции окна
         self.combo_koef.setCurrentText(self.current_windows.construction_windows)
         self.table_windows.blockSignals(False)
         self.combo_koef.blockSignals(False)
+        # вывод результата расчета в текстовом поле
+        self.result_text.clear()
+        self.result_text.setText(self.current_windows.get_text_result())
 
     def get_change(self):
         """Сохранение внесенных изменений"""
@@ -124,7 +89,7 @@ class Windows(QWidget):
         cur_row = self.table_windows.currentRow()
         if cur_row > -1:
             current_window = self.current_windows.elements[cur_row]
-            current_window.r = to_float(self.table_windows.item(cur_row, 0).text())
+            current_window.r_pr = to_float(self.table_windows.item(cur_row, 0).text())
             current_window.area = to_float(self.table_windows.item(cur_row, 2).text())
             current_window.set_size(self.table_windows.item(cur_row, 4).text())
             # сохранение количества элементов по азимутам
@@ -145,10 +110,13 @@ class Windows(QWidget):
         self.current_windows.g_koef = self.windows_koef[self.combo_koef.currentText()][1]
         # Пересчет конструкций
         self.build.calc()
+        # вывод результата расчета в текстовом поле
+        self.result_text.clear()
+        self.result_text.setText(self.current_windows.get_text_result())
 
     def add_window(self):
         """Добавление нового слоя"""
-        self.current_windows.add_window()
+        self.current_windows.add_window(index=self.table_windows.currentRow())
         self.draw_table()
 
     def delete_window(self):

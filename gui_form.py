@@ -157,6 +157,14 @@ class Ui_MainWindow(object):
         self.vbox5.setObjectName("vbox5")
         self.verticalLayout_10.addLayout(self.vbox5)
         self.tabWidget.addTab(self.tab7, "")
+        self.tab8 = QtWidgets.QWidget()
+        self.tab8.setObjectName("tab8")
+        self.verticalLayout_12 = QtWidgets.QVBoxLayout(self.tab8)
+        self.verticalLayout_12.setObjectName("verticalLayout_12")
+        self.vbox6 = QtWidgets.QVBoxLayout()
+        self.vbox6.setObjectName("vbox6")
+        self.verticalLayout_12.addLayout(self.vbox6)
+        self.tabWidget.addTab(self.tab8, "")
         self.verticalLayout.addWidget(self.tabWidget)
         self.horizontalLayout_3.addLayout(self.verticalLayout)
         MainWindow.setCentralWidget(self.centralwidget)
@@ -167,7 +175,7 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
+        MainWindow.setWindowTitle(_translate("MainWindow", "Расчет энергопаспорта"))
         self.but_load.setText(_translate("MainWindow", "Открыть"))
         self.but_save.setText(_translate("MainWindow", "Сохранить"))
         self.but_save_as.setText(_translate("MainWindow", "Сохранить как"))
@@ -182,3 +190,4 @@ class Ui_MainWindow(object):
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab5), _translate("MainWindow", "Page"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab6), _translate("MainWindow", "Page"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab7), _translate("MainWindow", "Page"))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab8), _translate("MainWindow", "Page"))
