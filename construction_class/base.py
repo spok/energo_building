@@ -1,7 +1,38 @@
 class BaseElement:
     """Класс для элементов конструкций"""
     def __init__(self):
+        # для многослойных конструкций
         self.name = ''
+        self.thickness = 0.0
+        self.lam = 0.0
+        self.r = 0.0
+        self.s = 0.0
+        self.d = 0.0
+        # для окон и витражей
+        self.r_pr = 0.0
+        self.area = 0.0
+        self.size = '0*0'
+        self.size_b = 0.0
+        self.size_h = 0.0
+        self.count_orientation = dict()
+        self.g_koef = 0.0
+        self.tau_koef = 0.0
+        self.i_rad = 0.0
+        # для дверей
+        self.count = 0
+        # для грунта
+        self.area_list = []
+
+    def set_size(self, size: str):
+        """Определение размера окна из строковой переменной"""
+        self.size = size
+        s = []
+        for razd in ['*', 'x', 'х', 'X', 'Х']:
+            if razd in size:
+                s = size.split(razd)
+        if len(s) > 1 and len(size) > 0:
+            self.size_b = float(s[0])
+            self.size_h = float(s[1])
 
     def get_dict(self):
         """Генерация словаря с данными
@@ -32,6 +63,7 @@ class BaseConstruction:
         self.t_ext = 0.0
         self.n_coef = 1.0
         self.nAR = 0.0
+        self.r_fact = 0.0
 
     def get_dict(self):
         """Генерация словаря с данными

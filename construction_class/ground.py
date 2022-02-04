@@ -8,20 +8,17 @@ from construction_class.base import *
 class GroundElement(BaseElement):
     def __init__(self):
         super().__init__()
-        self.name = ''
-        self.r_pr = 0.0
-        self.area = []
 
     def get_area(self) -> float:
         """Плащадь элемента общая"""
-        return sum(self.area)
+        return sum(self.area_list)
 
     def calc_r(self):
         """Расчет сопротивления теплопередаче"""
         sum_area = self.get_area()
         sum_r = 0.0
         r = [2.1, 4.3, 8.6, 14.2]
-        for i, elem in enumerate(self.area):
+        for i, elem in enumerate(self.area_list):
             try:
                 sum_r += elem / r[i]
             except:
@@ -38,7 +35,7 @@ class Grounds(BaseConstruction):
 
     def add_ground(self, index=0):
         elem = GroundElement()
-        elem.area = [0.0] * 4
+        elem.area_list = [0.0] * 4
         if index < (len(self.elements) - 1):
             self.elements.insert(index+1, elem)
         else:
@@ -62,7 +59,7 @@ class Grounds(BaseConstruction):
     def calc(self):
         """Расчет для дверей"""
         # Расчет приведенного сопротивления теплопередаче
-        sum_area = 0.0
+        self.area = 0.0
         sum_r = 0.0
         for elem in self.elements:
             area = elem.get_area()
@@ -71,9 +68,9 @@ class Grounds(BaseConstruction):
                 sum_r += area / elem.r_pr
             except:
                 print('Деление на ноль, для окна не указано сопротивление теплопередаче')
-            sum_area += area
+            self.area += area
         try:
-            self.r_pr = round(sum_area/sum_r, 2)
+            self.r_pr = round(self.area/sum_r, 2)
         except:
             print('Ошибка деления на ноль')
 
@@ -88,7 +85,7 @@ class Grounds(BaseConstruction):
                     table.item(i, 0).setTextAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
                     # добавление элементов с площадью
                     for j in range(4):
-                        el = QTableWidgetItem(str(elem.area[j]))
+                        el = QTableWidgetItem(str(elem.area_list[j]))
                         table.setItem(i, j + 1, el)
                         table.item(i, j + 1).setTextAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
                     # добавление кнопки для добавления пустого слоя

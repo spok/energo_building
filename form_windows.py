@@ -24,7 +24,7 @@ class Windows(QWidget):
         self.table_windows.horizontalHeader().setVisible(True)
         self.table_windows.setColumnWidth(0, 70)
         self.table_windows.setColumnWidth(1, 10)
-        self.table_windows.setColumnWidth(2, 70)
+        self.table_windows.setColumnWidth(2, 100)
         self.table_windows.setColumnWidth(3, 10)
         self.table_windows.setColumnWidth(4, 70)
         self.table_windows.setColumnWidth(5, 10)
@@ -38,7 +38,6 @@ class Windows(QWidget):
         self.table_windows.setColumnWidth(13, 20)
         self.table_windows.setColumnWidth(14, 20)
         self.table_windows.setColumnWidth(15, 20)
-        self.table_windows.resizeColumnsToContents()
         self.vbox.addWidget(self.table_windows)
         # Настройка характеристик окон
         self.label2 = QLabel('Конструкция окон')

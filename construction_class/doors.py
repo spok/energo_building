@@ -8,12 +8,6 @@ from construction_class.base import *
 class Door(BaseElement):
     def __init__(self):
         super().__init__()
-        self.r_pr = 0.0
-        self.area = 0.0
-        self.size = '0*0'
-        self.size_b = 0.0
-        self.size_h = 0.0
-        self.count = 0
 
     def set_size(self, size: str):
         """Определение размера элемента из строковой переменной"""
@@ -69,7 +63,7 @@ class Doors(BaseConstruction):
     def calc(self):
         """Расчет для дверей"""
         # Расчет приведенного сопротивления теплопередаче
-        sum_area = 0.0
+        self.area = 0.0
         sum_r = 0.0
         for elem in self.elements:
             area = elem.get_area()
@@ -77,9 +71,9 @@ class Doors(BaseConstruction):
                 sum_r += area / elem.r_pr
             except:
                 print('Деление на ноль, для окна не указано сопротивление теплопередаче')
-            sum_area += area
+            self.area += area
         try:
-            self.r_pr = round(sum_area/sum_r, 2)
+            self.r_pr = round(self.area/sum_r, 2)
         except:
             print('Ошибка деления на ноль')
 

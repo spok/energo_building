@@ -70,9 +70,9 @@ class Grounds(QWidget):
         if cur_row > -1:
             current_ground = self.current_ground.elements[cur_row]
             current_ground.name = self.table.item(cur_row, 0).text()
-            current_ground.area.clear()
+            current_ground.area_list.clear()
             for i in range(4):
-                current_ground.area.append(to_float(self.table.item(cur_row, i + 1).text()))
+                current_ground.area_list.append(to_float(self.table.item(cur_row, i + 1).text()))
         # Пересчет конструкций
         self.build.calc()
         # вывод результата расчета в текстовом поле

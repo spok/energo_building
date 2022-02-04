@@ -41,4 +41,4 @@ class Specifications(QWidget):
         building.draw_table_specif(self.table)
         # вывод результата расчета в текстовом поле
         self.result_text.clear()
-        # self.result_text.setText(building.get_text_result())
+        self.result_text.setText(building.get_text_spec())

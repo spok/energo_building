@@ -2,18 +2,14 @@ from PyQt5.QtWidgets import QTableWidgetItem, QPushButton
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt
 from PyQt5 import QtCore
-from construction_class.base import *
+from construction_class.base import BaseElement, BaseConstruction
 from func import get_string_index, r_unit, alfa_unit
 
 
-class Layer:
+class Layer(BaseElement):
     def __init__(self, name=''):
+        super().__init__()
         self.name = name
-        self.thickness = 0.0
-        self.lam = 0.0
-        self.r = 0.0
-        self.s = 0.0
-        self.d = 0.0
 
     def calc(self):
         try:
@@ -123,7 +119,7 @@ class Construction(BaseConstruction):
         s += f'Rпр = Ro · r = {self.ro} · {self.r_neodn} = {self.r_pr} {r_unit()}\n'
         s += "В соответствии с п. 5.1 СП 50.13330.2012 сопротивление теплопередаче конструкции должно быть не ниже "
         s += 'требуемого сопротивления теплопередаче. '
-        if self.r_pr > self.r_tr:
+        if self.r_pr >= self.r_tr:
             s_usl = ''
             s_znak = '>'
         else:

@@ -4,9 +4,12 @@ from PyQt5.QtWidgets import QTableWidgetItem, QFileDialog, QMessageBox, QTreeVie
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtCore import QSize
 from PyQt5.Qt import QStandardItemModel, QStandardItem
-from func import to_dot, load_excel, MyCombo
+from func import to_float, to_int, load_excel, MyCombo
 from construction_class.building import Building
 from construction_class.construction import Construction
+from construction_class.windows import Windows
+from construction_class.doors import Doors
+from construction_class.ground import Grounds
 import gui_form
 import form_cities
 import form_constructions
@@ -21,7 +24,7 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
     osn_ver_headers = ["Город расположения здания", "Тип здания", "Отапливаемый объем", "Этажность",
                        "Общая площадь здания", "Расчетная площадь", "", "Высота здания",
                        "Температура внутреннего воздуха", "Относительная влажность", "Условия экспплуатации",
-                       'Город для расчета солнечной энергии', 'Широта города'
+                       'Город для расчета солнечной энергии', 'Широта города', 'Количество жильцов, чел.'
                        ]
     cities = []
     name_cities = []
@@ -32,6 +35,8 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         # Инициализация родителей
         super().__init__()
         self.setupUi(self)
+        for i in range(self.tabWidget.count()):
+            self.tabWidget.setTabVisible(i, False)
         self.label.setMaximumSize(QSize(16777215, 20))
         self.label_2.setMaximumSize(QSize(16777215, 20))
         # настройка таблицы основных параметров здания
@@ -149,6 +154,18 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
                 elem_nod = QStandardItem(elem.get_construction_name())
                 elem_nod.setData(elem)
                 self.constructions_node.appendRow(elem_nod)
+            if type(elem) is Windows:
+                elem_nod = QStandardItem(elem.get_construction_name())
+                elem_nod.setData(elem)
+                self.constructions_node.appendRow(elem_nod)
+            if type(elem) is Doors:
+                elem_nod = QStandardItem(elem.get_construction_name())
+                elem_nod.setData(elem)
+                self.constructions_node.appendRow(elem_nod)
+            if type(elem) is Grounds:
+                elem_nod = QStandardItem(elem.get_construction_name())
+                elem_nod.setData(elem)
+                self.constructions_node.appendRow(elem_nod)
 
     def getTreeValue(self, val):
         if val.data() == "Основные сведения":
@@ -181,14 +198,15 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         """Установка параметров здания из элементов формы"""
         self.tab_osn.blockSignals(True)
         self.get_change()
-        self.build.v_heat = float(to_dot(self.tab_osn.item(2, 0).text()))
-        self.build.floors = int(self.tab_osn.item(3, 0).text())
-        self.build.area_all = float(to_dot(self.tab_osn.item(4, 0).text()))
-        self.build.area_calc = float(to_dot(self.tab_osn.item(5, 0).text()))
-        self.build.area_live = float(to_dot(self.tab_osn.item(6, 0).text()))
-        self.build.height_building = float(to_dot(self.tab_osn.item(7, 0).text()))
-        self.build.t_int = float(to_dot(self.tab_osn.item(8, 0).text()))
-        self.build.w_int = float(to_dot(self.tab_osn.item(9, 0).text()))
+        self.build.v_heat = to_float(self.tab_osn.item(2, 0).text())
+        self.build.floors = to_int(self.tab_osn.item(3, 0).text())
+        self.build.area_all = to_float(self.tab_osn.item(4, 0).text())
+        self.build.area_calc = to_float(self.tab_osn.item(5, 0).text())
+        self.build.area_live = to_float(self.tab_osn.item(6, 0).text())
+        self.build.height_building = to_float(self.tab_osn.item(7, 0).text())
+        self.build.t_int = to_float(self.tab_osn.item(8, 0).text())
+        self.build.w_int = to_float(self.tab_osn.item(9, 0).text())
+        self.build.tenants = to_int(self.tab_osn.item(13, 0).text())
         self.tab_osn.blockSignals(False)
 
     def get_data_building(self):
@@ -206,6 +224,7 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         self.tab_osn.setItem(7, 0, QTableWidgetItem(str(self.build.height_building)))
         self.tab_osn.setItem(8, 0, QTableWidgetItem(str(self.build.t_int)))
         self.tab_osn.setItem(9, 0, QTableWidgetItem(str(self.build.w_int)))
+        self.tab_osn.setItem(13, 0, QTableWidgetItem(str(self.build.tenants)))
         # вывод условия эксплуатации
         self.combo_ekspl.setCurrentText(self.build.ekspl)
         # вывод города для солнечной радиации
@@ -251,9 +270,11 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         if cur_typ == "Жилое" or cur_typ == "Общежитие":
             self.osn_ver_headers[5] = 'Общая площадь квартир'
             self.osn_ver_headers[6] = 'Жилая площадь'
+            self.osn_ver_headers[13] = 'Количество жильцов'
         else:
             self.osn_ver_headers[5] = 'Расчетная площадь'
             self.osn_ver_headers[6] = ''
+            self.osn_ver_headers[13] = 'Количество работников'
         self.tab_osn.setVerticalHeaderLabels(self.osn_ver_headers)
         self.build.typ = cur_typ
         # при изменении города
@@ -272,6 +293,8 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         self.build.solar_citi = self.combo_solar_siti.currentText()
         # при изменении широты
         self.build.latitude = int(self.combo_latitude.currentText())
+
+
         self.tab_osn.blockSignals(False)
         # пересчет после изменений параметров
         if not self.tab_osn.signalsBlocked():
@@ -336,6 +359,7 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
                 self.bild_tree()
                 self.build.calc()
                 self.tab_osn.blockSignals(False)
+                self.tabWidget.setCurrentIndex(0)
 
 
 if __name__ == '__main__':

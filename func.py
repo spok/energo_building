@@ -105,9 +105,19 @@ def to_float(s: str) -> float:
         x = float(to_dot(s))
     except:
         print('Некореткно указано значение')
-        x = 0
+        x = 0.0
     return x
 
+def to_int(s: str) -> int:
+    """Конвертация строки в вещественный тип данных
+    :param s - строка
+    :return переменная типа int"""
+    try:
+        x = int(s)
+    except:
+        print('Некореткно указано значение')
+        x = 0
+    return x
 
 def get_string_index(index: int) -> str:
     """Расчет нижнего индекса для значения

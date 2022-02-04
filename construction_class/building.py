@@ -35,6 +35,7 @@ class Building:
         self.t_ros = 0.0
         self.w_int = 55.0
         self.ekspl = 'А'
+        self.tenants = 0
         self.norm = dict()
 
         self.citi = 'Волгоград'
@@ -45,8 +46,13 @@ class Building:
         self.solar_citi = 'Волгоград'
         self.latitude = 48
         self.solar_energy = dict()
+        self.Q_solar = 0.0
+        self.k_rad = 0.0
+        self.k_bit = 0.0
+        self.q_bit = 0.0
         self.constructions = []
         self.k_ob = 0.0
+        self.k_ob_tr = 0.0
         self.sum_nAR = 0.0
         self.solar_citi_dict = load_solar_radiation()
         self.orientation_coef = load_orientation_coef()
@@ -211,6 +217,63 @@ class Building:
                 except ZeroDivisionError:
                     con.nAR = 0.0
                 self.sum_nAR += con.nAR
+        self.sum_nAR = round(self.sum_nAR, 2)
+
+        # расчет удельной теплозащитной характеристики
+        try:
+            self.k_ob = round(self.sum_nAR / self.v_heat, 3)
+        except ZeroDivisionError:
+            self.k_ob = 0.0
+        if self.v_heat > 960:
+            self.k_ob_tr = (0.16+10/self.v_heat**0.5) / (0.00013 * self.gsop + 0.61)
+        else:
+            try:
+                self.k_ob_tr = (4.74 / (0.00013 * self.gsop + 0.61)) * 1 / self.v_heat**(1./3.)
+            except ZeroDivisionError:
+                self.k_ob_tr = 0.0
+        try:
+            k_ob_tr_min = 8.5/(self.gsop**0.5)
+        except ZeroDivisionError:
+            k_ob_tr_min = 0.0
+        if self.k_ob_tr < k_ob_tr_min:
+            self.k_ob_tr = k_ob_tr_min
+        self.k_ob_tr = round(self.k_ob_tr, 3)
+
+        # расчет удельной характеристики теплопоступления солнечной радиации
+        self.Q_solar = 0.0
+        for con in self.constructions:
+            if con.typ in ['Окна', 'Витражи', 'Фонари']:
+                for key in con.solar_energy:
+                    self.Q_solar += con.solar_energy[key]
+        try:
+            self.k_rad = 11.6*self.Q_solar/(self.gsop * self.v_heat)
+        except ZeroDivisionError:
+            self.k_rad = 0.0
+
+        # расчет бытовых тепловыделений для жилых зданий
+        if self.typ in ["Жилое", "Общежитие"]:
+            try:
+                a_ras = self.area_calc / self.tenants
+            except ZeroDivisionError:
+                a_ras = 0.0
+            if a_ras < 20:
+                self.q_bit = 17
+            elif a_ras > 45:
+                self.q_bit = 10
+            else:
+                self.q_bit = round(17 + 7/25 * (a_ras - 20), 2)
+            try:
+                self.k_bit = self.q_bit * self.area_live /(self.v_heat*(self.t_int - self.t_ot))
+            except ZeroDivisionError:
+                self.k_bit = 0.0
+        else:
+            # расчет для нежилых зданий
+            try:
+                self.q_bit = self.tenants * 90 / self.area_calc + 10
+                self.k_bit = self.q_bit * self.area_calc / (self.v_heat*(self.t_int - self.t_ot))
+            except ZeroDivisionError:
+                self.q_bit = 0.0
+                self.k_bit = 0.0
 
     def calc_norm(self):
         """Расчет нормативных сопротивлений теплопопередаче для всех типов конструкций"""
@@ -378,6 +441,37 @@ class Building:
         s += f"ГСОП = ({self.t_int} - {self.t_ot})*{self.z_ot} = {self.gsop} ºС·сут\n"
         return s
 
+    def get_text_spec(self) -> str:
+        """Генерация текстового результата расчета"""
+        s = ''
+        s += "Удельная теплозащитная характеристика здания равна\n"
+        s += f'kоб = 1/{self.v_heat}·{self.sum_nAR} = {self.k_ob} Вт/(м³∙°С).\n'
+        if self.v_heat > 960:
+            s += 'Для зданий с отапливаемым объемом больше 960 м³ нормируемое значение удельной теплозащитной '
+            s += 'характеристики здания определяется по формуле 5.5 СП 50.13330.2012\n'
+            s += f'kобтр = (0,16 + 10/√{self.v_heat})/(0,00013 · {self.gsop} + 0,61) = {self.k_ob_tr} Вт/(м³∙°С).\n'
+
+        else:
+            s += "Для зданий с отапливаемым объемом меньше или равно 960 м³ нормируемое значение удельной "
+            s += "теплозащитной характеристики здания определяется по формуле 5.5 СП 50.13330.2012.\n"
+            s += f'kобтр = (4,74/(0,00013 · {self.gsop} + 0,61)·1/³√{self.v_heat} = {self.k_ob_tr} Вт/(м³∙°С).\n'
+        try:
+            k_ob_tr_min = round(8.5 / (self.gsop ** 0.5), 2)
+        except ZeroDivisionError:
+            k_ob_tr_min = 0.0
+        s += 'Нормируемое значение удельной теплозащитной характеристики здания также определяемое по формуле 5.6\n'
+        s += f'kобтр = 8,5/√{self.gsop} = {k_ob_tr_min} Вт/(м³∙°С).\n'
+        znak = '>' if self.k_ob_tr >= k_ob_tr_min else '<'
+        form = '5.5' if self.k_ob_tr >= k_ob_tr_min else '5.6'
+        s += f'Так как {self.k_ob_tr} {znak} {k_ob_tr_min}, следовательно окончательное значение нормируемой удельной теплозащитной'
+        s += f'характеристики принимаем рассчитанной по формуле {form}, то есть равное {self.k_ob_tr} Вт/(м³∙°С).\n'
+        znak = 'больше' if self.k_ob > self.k_ob_tr else 'меньше'
+        s += f'Так как расчетная удельная теплозащитная характеристика равная {self.k_ob} Вт/(м³∙°С), {znak} '
+        znak = 'не' if self.k_ob > self.k_ob_tr else ''
+        s += f'нормируемой величины, равной {self.k_ob_tr} Вт/(м³∙°С), то требование показателя б) пункта 5.1 '
+        s += f'СП 50.133300.2012 {znak} выполняется.'
+        return s
+
     def get_dict(self) -> dict:
         """Генерация словаря с данными
         :return - словарь"""
@@ -398,7 +492,7 @@ class Building:
             if key == 'constructions':
                 self.constructions.clear()
                 for i, con in enumerate(data[key]):
-                    self.add_construction(con['typ'], con['name'])
+                    self.add_construction(con['typ'], con['name'], index=i)
                     self.constructions[i].data_from_dict(con)
             else:
                 if key in self.__dict__.keys():
@@ -461,28 +555,33 @@ class Building:
         table - таблица конструкций QTableWidget"""
         self.calc()
         if len(self.constructions) > 0:
+            row = 0
             table.setRowCount(len(self.constructions))
-            for i, elem in enumerate(self.constructions):
-                # добавление названия конструкции
-                table.setItem(i, 0, QTableWidgetItem(elem.get_construction_name()))
-                table.setItem(i, 1, QTableWidgetItem(str(self.t_int)))
-                table.item(i, 1).setTextAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
-                table.setItem(i, 2, QTableWidgetItem(str(elem.t_ext)))
-                table.item(i, 2).setTextAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
-                table.setItem(i, 3, QTableWidgetItem(str(elem.n_coef)))
-                table.item(i, 3).setTextAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
-                table.setItem(i, 4, QTableWidgetItem(str(elem.area)))
-                table.item(i, 4).setTextAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
-                table.setItem(i, 5, QTableWidgetItem(str(elem.r_pr)))
-                table.item(i, 5).setTextAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
-                table.setItem(i, 6, QTableWidgetItem(str(round(elem.nAR, 2))))
-                table.item(i, 6).setTextAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
-                s = 0.0
-                try:
-                    s = round(elem.nAR/self.sum_nAR*100, 2)
-                except ZeroDivisionError:
-                    s = 0
-                table.setItem(i, 7, QTableWidgetItem(str(s)))
-                table.item(i, 7).setTextAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+            for elem in self.constructions:
+                if elem.purpose in ['Внутреняя подвала', 'Внутреняя чердака', 'Ограждающая']:
+                    row += 1
+                    i = row - 1
+                    table.setRowCount(row)
+                    # добавление параметров конструкции
+                    table.setItem(i, 0, QTableWidgetItem(elem.get_construction_name()))
+                    table.setItem(i, 1, QTableWidgetItem(str(self.t_int)))
+                    table.item(i, 1).setTextAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+                    table.setItem(i, 2, QTableWidgetItem(str(round(elem.t_ext, 2))))
+                    table.item(i, 2).setTextAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+                    table.setItem(i, 3, QTableWidgetItem(str(round(elem.n_coef, 2))))
+                    table.item(i, 3).setTextAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+                    table.setItem(i, 4, QTableWidgetItem(str(round(elem.area, 2))))
+                    table.item(i, 4).setTextAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+                    table.setItem(i, 5, QTableWidgetItem(str(elem.r_pr)))
+                    table.item(i, 5).setTextAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+                    table.setItem(i, 6, QTableWidgetItem(str(round(elem.nAR, 2))))
+                    table.item(i, 6).setTextAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+                    s = 0.0
+                    try:
+                        s = round(elem.nAR/self.sum_nAR*100, 2)
+                    except ZeroDivisionError:
+                        s = 0
+                    table.setItem(i, 7, QTableWidgetItem(str(s)))
+                    table.item(i, 7).setTextAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
 
 

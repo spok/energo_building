@@ -2,32 +2,12 @@ from PyQt5.QtWidgets import QTableWidgetItem, QPushButton
 from PyQt5.QtGui import QIcon
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt
-from construction_class.base import *
+from construction_class.base import BaseElement, BaseConstruction
 
 
 class WindowElement(BaseElement):
     def __init__(self):
         super().__init__()
-        self.r_pr = 0.0
-        self.area = 0.0
-        self.size = '0*0'
-        self.size_b = 0.0
-        self.size_h = 0.0
-        self.count_orientation = dict()
-        self.g_koef = 0.0
-        self.tau_koef = 0.0
-        self.i_rad = 0.0
-
-    def set_size(self, size: str):
-        """Определение размера окна из строковой переменной"""
-        self.size = size
-        s = []
-        for razd in ['*', 'x', 'х', 'X', 'Х']:
-            if razd in size:
-                s = size.split(razd)
-        if len(s) > 1 and len(size) > 0:
-            self.size_b = float(s[0])
-            self.size_h = float(s[1])
 
     def get_area(self) -> float:
         """Плащадь окна общая"""
@@ -97,7 +77,7 @@ class Windows(BaseConstruction):
         """Расчет для окон
         :param solar_dict - словарь с значениями солнечной энергии по азимутам"""
         # Расчет приведенного сопротивления теплопередаче
-        sum_area = 0
+        self.area = 0
         sum_r = 0
         for elem in self.elements:
             area = elem.get_area()
@@ -105,13 +85,13 @@ class Windows(BaseConstruction):
                 sum_r += area / elem.r_pr
             except:
                 print('Деление на ноль, для окна не указано сопротивление теплопередаче')
-            sum_area += area
+            self.area += area
         try:
-            self.r_pr = round(sum_area/sum_r, 2)
+            self.r_pr = round(self.area/sum_r, 2)
         except:
             print('Ошибка деления на ноль')
         # Расчет солнечной радиации
-        if sum_area > 0:
+        if self.area > 0:
             self.solar_energy = dict()
             area_azimut = self.get_sum_area()
             for key in area_azimut:
