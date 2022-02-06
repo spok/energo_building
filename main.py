@@ -24,7 +24,9 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
     osn_ver_headers = ["Город расположения здания", "Тип здания", "Отапливаемый объем", "Этажность",
                        "Общая площадь здания", "Расчетная площадь", "", "Высота здания",
                        "Температура внутреннего воздуха", "Относительная влажность", "Условия экспплуатации",
-                       'Город для расчета солнечной энергии', 'Широта города', 'Количество жильцов, чел.'
+                       'Город для расчета солнечной энергии', 'Широта города', 'Количество жильцов, чел.',
+                       'Год разработки проекта', 'Регулирование подачи тепла в здание',
+                       'Объем лестнично-лифтового узла'
                        ]
     cities = []
     name_cities = []
@@ -85,15 +87,9 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         s = [str(x) for x in self.build.latitude_list]
         self.combo_latitude.addItems(s)
         self.tab_osn.setCellWidget(12, 0, self.combo_latitude)
-
-        # таблица с нормативными значениями
-        self.tab_norm.setColumnCount(4)
-        hor_headers = ['Тип конструкции', 'Сопротивление \nRтр', 'Коэффициент\nmp', 'Сопротивление \nRmin']
-        self.tab_norm.setHorizontalHeaderLabels(hor_headers)
-        self.tab_norm.setColumnWidth(0, 250)
-        self.tab_norm.setColumnWidth(1, 100)
-        self.tab_norm.setColumnWidth(2, 100)
-        self.tab_norm.setColumnWidth(3, 100)
+        # список с системой регулирования подачи тепла
+        self.combo_regular = MyCombo(Building.typ_regular)
+        self.tab_osn.setCellWidget(15, 0, self.combo_regular)
 
         # настройка дерева
         self.tree.setHeaderHidden(True)
@@ -144,6 +140,7 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         self.tree.clicked.connect(self.getTreeValue)
         self.get_change()
         self.bild_tree()
+        self.tabWidget.setCurrentIndex(0)
 
     def bild_tree(self):
         """Построение структуры конструкций здания"""
@@ -207,6 +204,8 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         self.build.t_int = to_float(self.tab_osn.item(8, 0).text())
         self.build.w_int = to_float(self.tab_osn.item(9, 0).text())
         self.build.tenants = to_int(self.tab_osn.item(13, 0).text())
+        self.build.year = to_int(self.tab_osn.item(14, 0).text())
+        self.build.v_llu = to_float(self.tab_osn.item(16, 0).text())
         self.tab_osn.blockSignals(False)
 
     def get_data_building(self):
@@ -225,12 +224,16 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         self.tab_osn.setItem(8, 0, QTableWidgetItem(str(self.build.t_int)))
         self.tab_osn.setItem(9, 0, QTableWidgetItem(str(self.build.w_int)))
         self.tab_osn.setItem(13, 0, QTableWidgetItem(str(self.build.tenants)))
+        self.tab_osn.setItem(14, 0, QTableWidgetItem(str(self.build.year)))
+        self.tab_osn.setItem(16, 0, QTableWidgetItem(str(self.build.v_llu)))
         # вывод условия эксплуатации
         self.combo_ekspl.setCurrentText(self.build.ekspl)
         # вывод города для солнечной радиации
         self.combo_solar_siti.setCurrentText(self.build.solar_citi)
         # вывод широты
         self.combo_latitude.setCurrentText(str(self.build.latitude))
+        # вывод типа авторегулирования на вводе
+        self.combo_regular.setCurrentText(self.build.regular)
 
     def check_input(self):
         """Проверка вводимых данных в ячейках таблицы"""
@@ -289,12 +292,12 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
             self.build.z_ot = cur_citi[10]
         # при изменении условий эксплуатаций
         self.build.ekspl = self.combo_ekspl.currentText()
-        # при изменении города для расчета солнечной радиации
-        self.build.solar_citi = self.combo_solar_siti.currentText()
         # при изменении широты
         self.build.latitude = int(self.combo_latitude.currentText())
-
-
+        # при изменении широты
+        self.build.latitude = int(self.combo_latitude.currentText())
+        # при изменении авторегулирования подачи тепла
+        self.build.regular = self.combo_regular.currentText()
         self.tab_osn.blockSignals(False)
         # пересчет после изменений параметров
         if not self.tab_osn.signalsBlocked():
@@ -306,25 +309,11 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         """Вывод расчета ГСОП"""
         self.text_gsop.clear()
         s = self.build.get_gsop_text()
-        self.text_gsop.insertPlainText(s)
 
     def out_norm(self):
-        self.tab_norm.setRowCount(len(self.build.typ_constr)-1)
-        for i, val in enumerate(self.build.norm):
-            elem = self.build.norm[val]
-            if 'Rtr' in elem:
-                self.tab_norm.setItem(i, 0, QTableWidgetItem(elem['name']))
-                self.tab_norm.item(i, 0).setTextAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-                self.tab_norm.item(i, 0).setFlags(self.tab_norm.item(i, 0).flags() ^ QtCore.Qt.ItemIsEditable)
-                self.tab_norm.setItem(i, 1, QTableWidgetItem(str(elem['Rtr'])))
-                self.tab_norm.item(i, 1).setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-                self.tab_norm.item(i, 1).setFlags(self.tab_norm.item(i, 1).flags() ^ QtCore.Qt.ItemIsEditable)
-                self.tab_norm.setItem(i, 2, QTableWidgetItem(str(elem['mp'])))
-                self.tab_norm.item(i, 2).setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-                self.tab_norm.item(i, 2).setFlags(self.tab_norm.item(i, 2).flags() ^ QtCore.Qt.ItemIsEditable)
-                self.tab_norm.setItem(i, 3, QTableWidgetItem(str(elem['Rmin'])))
-                self.tab_norm.item(i, 3).setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-                self.tab_norm.item(i, 3).setFlags(self.tab_norm.item(i, 3).flags() ^ QtCore.Qt.ItemIsEditable)
+        """Вывод расчета нормативных требований"""
+        self.text_norm.clear()
+        self.build.get_norm_html(self.text_norm)
 
     def save_json(self):
         """Сохранение данных в формате json"""

@@ -91,6 +91,26 @@ def load_orientation_coef() -> dict:
     return data
 
 
+def load_udeln() -> dict:
+    """Загрузка удельного расхода тепловой энергии из файла Excel
+    :return - словарь key = тип здания, list = значения для 1-12 этажей"""
+    fname = 'data.xlsx'
+    # ссылка на лист в таблице
+    wb = load_workbook(fname)
+    sheet = wb.get_sheet_by_name(name = 'udeln')
+    # количество заполненных строк
+    max_row = sheet.max_row
+    # чтение данных
+    data_udeln = dict()
+    for i in range(1, max_row+1):
+        koef = []
+        for j in range(2, 14):
+            koef.append(sheet.cell(row=i, column=j).value)
+        key = sheet.cell(row=i, column=1).value
+        data_udeln[key] = koef
+    return data_udeln
+
+
 def to_dot(s: str) -> str:
     if ',' in s:
         s = s.replace(',', '.')
