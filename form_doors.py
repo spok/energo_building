@@ -62,7 +62,7 @@ class Doors(QWidget):
         self.table.blockSignals(False)
         # вывод результата расчета в текстовом поле
         self.result_text.clear()
-        self.result_text.setText(self.current_doors.get_text_result())
+        self.result_text.setHtml(self.current_doors.get_text_result())
 
     def get_change(self):
         """Сохранение внесенных изменений"""

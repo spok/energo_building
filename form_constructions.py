@@ -97,3 +97,4 @@ class Constructions(QWidget):
         """Удаление текущей конструкции"""
         cur = self.table_cons.currentRow()
         self.building.del_construction(cur)
+        self.draw_table()

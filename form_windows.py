@@ -80,7 +80,7 @@ class Windows(QWidget):
         self.combo_koef.blockSignals(False)
         # вывод результата расчета в текстовом поле
         self.result_text.clear()
-        self.result_text.setText(self.current_windows.get_text_result())
+        self.result_text.setHtml(self.current_windows.get_text_result())
 
     def get_change(self):
         """Сохранение внесенных изменений"""
@@ -101,8 +101,8 @@ class Windows(QWidget):
                         except:
                             QMessageBox.about(self, "Ошибка", f"Неверно указано количество в строке {cur_row}")
                             current_window.count_orientation[azimuth] = 0
-                else:
-                    current_window.count_orientation[azimuth] = 0
+                    else:
+                        current_window.count_orientation[azimuth] = 0
         # Сохранение изменений в выпадающих списках
         self.current_windows.construction_windows =self.combo_koef.currentText()
         self.current_windows.tau_koef = self.windows_koef[self.combo_koef.currentText()][0]

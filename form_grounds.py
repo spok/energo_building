@@ -77,7 +77,7 @@ class Grounds(QWidget):
         self.build.calc()
         # вывод результата расчета в текстовом поле
         self.result_text.clear()
-        self.result_text.setText(self.current_ground.get_text_result())
+        self.result_text.setHtml(self.current_ground.get_text_result())
 
     def add_ground(self):
         """Добавление нового слоя"""

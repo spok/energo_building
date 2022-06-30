@@ -138,7 +138,7 @@ class ConstructionLayer(QWidget):
             self.coef_r.setText('1.0')
         self.result_text.clear()
         self.build.calc()
-        self.result_text.setText(self.current_construction.get_text_r())
+        self.result_text.setHtml(self.current_construction.get_text_r())
 
     def add_layer(self):
         """Добавление нового слоя"""

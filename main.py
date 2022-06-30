@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import QTableWidgetItem, QFileDialog, QMessageBox, QTreeVie
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtCore import QSize
 from PyQt5.Qt import QStandardItemModel, QStandardItem
+from PyQt5.QtGui import QTextCursor
 from func import to_float, to_int, load_excel, MyCombo
 from construction_class.building import Building
 from construction_class.construction import Construction
@@ -40,7 +41,6 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         for i in range(self.tabWidget.count()):
             self.tabWidget.setTabVisible(i, False)
         self.label.setMaximumSize(QSize(16777215, 20))
-        self.label_2.setMaximumSize(QSize(16777215, 20))
         # настройка таблицы основных параметров здания
         tab_row = len(self.osn_ver_headers)
         self.tab_osn.setColumnCount(2)
@@ -99,10 +99,16 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         norm = QStandardItem('Нормативные требования')
         self.constructions_node = QStandardItem('Конструкции')
         spec = QStandardItem('Теплофизическая характеристика')
+        result = QStandardItem('Удельный расход тепловой энергии')
+        pasport = QStandardItem('Энергетический паспорт')
+        class_energo = QStandardItem('Класс энергоэффективности')
         rootNode.appendRow(base)
         rootNode.appendRow(norm)
         rootNode.appendRow(self.constructions_node)
         rootNode.appendRow(spec)
+        rootNode.appendRow(result)
+        rootNode.appendRow(pasport)
+        rootNode.appendRow(class_energo)
         self.tree.setModel(treeModel)
         self.tree.expandAll()
 
@@ -189,7 +195,16 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
                 self.tab_grounds.build_table(build=self.build, index=val.row())
         elif val.data() == "Теплофизическая характеристика":
             self.tabWidget.setCurrentIndex(7)
-            self.tab_specif.draw_table(building=self.build)
+            self.tab_specif.draw_specif(building=self.build)
+        elif val.data() == "Удельный расход тепловой энергии":
+            self.tabWidget.setCurrentIndex(7)
+            self.tab_specif.draw_result(building=self.build)
+        elif val.data() == "Энергетический паспорт":
+            self.tabWidget.setCurrentIndex(7)
+            self.tab_specif.draw_pasport(building=self.build)
+        elif val.data() == "Класс энергоэффективности":
+            self.tabWidget.setCurrentIndex(7)
+            self.tab_specif.draw_class(building=self.build)
 
     def set_data_building(self):
         """Установка параметров здания из элементов формы"""
@@ -253,6 +268,7 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
                     print(f'Некорректно введено значение в строке {cur_row}')
         self.set_data_building()
         self.build.calc()
+        self.out_norm()
 
     def view_cities(self):
         """Отображение окна с климатическими параметрами городов"""
@@ -274,10 +290,12 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
             self.osn_ver_headers[5] = 'Общая площадь квартир'
             self.osn_ver_headers[6] = 'Жилая площадь'
             self.osn_ver_headers[13] = 'Количество жильцов'
+            self.osn_ver_headers[16] = 'Объем лестнично-лифтового узла'
         else:
             self.osn_ver_headers[5] = 'Расчетная площадь'
             self.osn_ver_headers[6] = ''
             self.osn_ver_headers[13] = 'Количество работников'
+            self.osn_ver_headers[16] = 'Объем приточного воздуха'
         self.tab_osn.setVerticalHeaderLabels(self.osn_ver_headers)
         self.build.typ = cur_typ
         # при изменении города
@@ -302,18 +320,16 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
         # пересчет после изменений параметров
         if not self.tab_osn.signalsBlocked():
             self.build.calc()
-            self.out_calc_gsop()
             self.out_norm()
-
-    def out_calc_gsop(self):
-        """Вывод расчета ГСОП"""
-        self.text_gsop.clear()
-        s = self.build.get_gsop_text()
 
     def out_norm(self):
         """Вывод расчета нормативных требований"""
         self.text_norm.clear()
         self.build.get_norm_html(self.text_norm)
+        # перенос в начало текста
+        cursor = self.text_norm.textCursor()
+        cursor.movePosition(QTextCursor.Start)
+        self.text_norm.setTextCursor(cursor)
 
     def save_json(self):
         """Сохранение данных в формате json"""
