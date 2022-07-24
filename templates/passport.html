@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Энергетический паспорт</title>
+</head>
+<body>
+
+<style>
+    TABLE {
+        border-collapse:collapse;
+        width:100%;
+    }
+    TD, TH {
+        padding:3px;
+        border:1px solid black;
+        font-size:14px;
+    }
+    table tr td {
+        text-align: left;
+    }
+    table tr td+td {
+        text-align: center;
+    }
+    CAPTION {
+        text-align:center;
+        font-size:14px;
+        margin-top:20px;
+    }
+    DIV.h1 {
+        text-align:center;
+        font-size:16px;
+        font-weight:bold;
+        margin-bottom:15px;
+    }
+    DIV.h2 {
+        text-align:center;
+        font-size:14px;
+        font-weight:bold;
+        margin-bottom:10px;
+    }
+    DIV.formula {
+        text-align:center;
+        font-size:14px;
+        margin-top:10px;
+        margin-bottom:10px;
+    }
+
+    DIV.txt {
+        text-align:justify;
+        font-size:14px;
+    }
+</style>
+
+<div class="h1">1 Общая информация</div>
+<table border="1">
+    <tr><td>Дата заполнения (число, месяц, год)</td>  <td></td></tr>
+    <tr><td>Адрес здания</td>  <td></td></tr>
+    <tr><td>Разработчик проекта</td>  <td></td></tr>
+    <tr><td>Адрес и телефон разработчика</td>  <td></td></tr>
+    <tr><td>Шифр проекта</td>  <td></td></tr>
+    <tr><td>Назначение здания, серия</td>  <td></td></tr>
+    <tr><td>Этажность, количество секций</td>  <td>{{passp.floors}}</td></tr>
+    <tr><td>Количество квартир</td>  <td></td></tr>
+    <tr><td>Расчетное количество жителей или служащих</td>  <td>{{passp.tenants}}</td></tr>
+    <tr><td>Размещение в застройке</td>  <td></td></tr>
+    <tr><td>Конструктивное решение</td>  <td></td></tr>
+</table>
+
+<div class="h1">2 Расчетные условия</div>
+<table border="1">
+    <tr>
+    <th>Наименование расчетных параметров</th>
+    <th>Обозначение параметра</th>
+    <th>Единица измерения</th>
+    <th>Расчетное значение</th>
+    </tr>
+    <tr><td>1 Расчетная температура наружного воздуха для проектирования теплозащиты</td>
+    <td>t<sub>н</sub></td>  <td>°С</td>  <td>{{passp.t_nhp}}</td></tr>
+    <tr><td>2 Средняя температура наружного воздуха за отопительный период</td>
+    <td>t<sub>от</sub></td>  <td>°С</td>  <td>{{passp.t_ot}}</td></tr>
+    <tr><td>3 Продолжительность отопительного периода</td>
+    <td>z<sub>от</sub></td>  <td>сут/год</td>  <td>{{passp.z_ot}}</td></tr>
+    <tr><td>4 Градусо-сутки отопительного периода</td>
+    <td>ГСОП</td>  <td>°С·сут/год</td>  <td>{{passp.gsop}}</td></tr>
+    <tr><td>5 Расчетная температура внутреннего воздуха для проектирования теплозащиты</td>
+    <td>t<sub>в</sub></td>  <td>°С</td>  <td>{{passp.t_int}}</td></tr>
+    {% if attic.has == True %}
+        <tr><td>6 Расчетная температура чердака</td>
+        <td>t<sub>черд</sub></td>  <td>°С</td>  <td>{{attic.t_ext}}</td></tr>
+    {% else %}
+        <tr><td>6 Расчетная температура чердака</td><td>t<sub>черд</sub></td>  <td>°С</td>  <td> - </td></tr>
+    {% endif %}
+    {% if basement.has == True %}
+        <tr><td>7 Расчетная температура техподполья</td>
+            <td>t<sub>подп</sub></td>  <td>°С</td>  <td>{{basement.t_ext}}</td></tr>
+    {% else %}
+        <tr><td>7 Расчетная температура техподполья</td><td>t<sub>подп</sub></td>  <td>°С</td>  <td> - </td></tr>
+    {% endif %}
+</table>
+
+<div class="h1">3 Показатели геометрические</div>
+<table border="1">
+    <tr>
+    <th>Показатель</th>
+    <th>Обозначение и единица измерения</th>
+    <th>Расчетное проектное значение</th>
+    <th>Фактическое значение</th>
+    </tr>
+    <tr><td>8 Сумма площадей этажей здания</td>
+    <td>А<sub>от</sub>, м²</td>  <td>{{passp.area_all}}</td>  <td>  </td></tr>
+    <tr><td>9 Площадь жилых помещений</td><td>А<sub>ж</sub>, м²</td>  <td>{{passp.area_live}}</td>  <td>  </td></tr>
+    <tr><td>10 Расчетная площадь (общественных зданий)</td><td>А<sub>р</sub>, м²</td>  <td>{{passp.area_calc}}</td>  <td>  </td></tr>
+    <tr><td>11 Отапливаемый объем</td><td>V<sub>от</sub>, м³</td>  <td>{{passp.v_heat}}</td>  <td>  </td></tr>
+    <tr><td>12 Коэффициент остекленности фасада здания</td><td>f</td>  <td>{{area.coef_ostekl}}</td>  <td>  </td></tr>
+    <tr><td>13 Показатель компактности здания</td><td>К<sub>комп</sub></td>  <td>{{area.compact}}</td>  <td>  </td></tr>
+    <tr><td>14 Общая площадь наружных ограждающих конструкций здания,</td>
+    <td>А<sub>н</sub><sup>сум</sup>, м²</td>  <td>{{(area.area_ogr)|round(3)}}</td>  <td>  </td></tr>
+    <tr><td>в том числе:</td><td>  </td>  <td>  </td>  <td>  </td></tr>
+    <tr><td>    фасадов</td><td>А<sub>фас</sub>, м²</td>  <td>{{area.area_fasad}}</td>  <td>  </td></tr>
+    <tr><td>    стен (раздельно по типу конструкции)</td><td>А<sub>ст</sub>, м²</td>  <td>{{area.area_wall}}</td>  <td>  </td></tr>
+    {% set i = {"index": 0} %}
+    {% for elem in passp.constructions %}
+        {% if elem.typ == 'Наружная стена' and elem.purpose == 'Ограждающая' %}
+            {% if i.update({'index': i.index + 1}) %} {% endif %}
+            <tr><td>    {{elem.get_construction_name().lower()}}</td>
+            <td>А<sub>ст{{i.index}}</sub>, м²</td>  <td>{{elem.area}}</td>  <td>  </td></tr>
+        {% endif %}
+    {% endfor %}
+    <tr><td>окон и балконных дверей</td><td>А<sub>ок.1</sub>, м²</td>  <td>{{area.area_okon}}</td>  <td>  </td></tr>
+    <tr><td>витражей</td><td>А<sub>ок.2</sub>, м²</td>  <td>{{(area.area_vitr)|round(3)}}</td>  <td>  </td></tr>
+    <tr><td>фонарей</td><td>А<sub>ок.3</sub>, м²</td>  <td>{{area.area_fonar}}</td>  <td>  </td></tr>
+    <tr><td>окон лестнично-лифтовых узлов</td><td>А<sub>ок.4</sub>, м²</td>  <td> - </td>  <td>  </td></tr>
+    <tr><td>балконных дверей наружных переходов</td><td>А<sub>дв</sub>, м²</td>  <td> - </td>  <td>  </td></tr>
+    <tr><td>входных дверей и ворот (раздельно)</td><td>А<sub>дв</sub>, м²</td>  <td>{{area.area_door}}</td>  <td>  </td></tr>
+    <tr><td>покрытий (совмещенных)</td><td>А<sub>покр</sub>, м²</td>  <td>{{area.area_pokr}}</td>  <td>  </td></tr>
+    <tr><td>чердачных перекрытий</td><td>А<sub>черд</sub>, м²</td>  <td>{{area.area_attic}}</td>  <td>  </td></tr>
+    <tr><td>перекрытий "теплых" чердаков (эквивалентная)</td><td>А<sub>черд.т</sub>, м²</td>  <td>{{area.area_warm_attic}}</td>  <td>  </td></tr>
+    <tr><td>перекрытий над техническими подпольями или над неотапливаемыми подвалами</td><td>А<sub>цок1</sub>, м²</td>  <td>{{area.area_basement}}</td>  <td>  </td></tr>
+    <tr><td>перекрытий над проездами или под эркерами</td><td>А<sub>цок2</sub>, м²</td>  <td>{{area.area_proezd}}</td>  <td>  </td></tr>
+    <tr><td>стен в земле и пола по грунту</td><td>А<sub>цок3</sub>, м²</td>  <td>{{area.area_ground}}</td>  <td>  </td></tr>
+</table>
+
+<div class="h1">4 Показатели теплотехнические</div>
+<table border="1">
+    <tr>
+    <th>Показатель</th>
+    <th>Обозначение и единица измерения</th>
+    <th>Нормируемое значение</th>
+    <th>Расчетное проектное значение</th>
+    <th>Фактическое значение</th>
+    </tr>
+    <tr><td>15 Приведенное сопротивление теплопередаче наружных ограждений, в том числе:</td>
+    <td>R<sub>o</sub><sup>пр</sup>, м²·°С/Вт</td>  <td>{{(passp.r_pr_norm)|round(3)}}</td>
+    <td>{{(passp.r_pr)|round(3)}}</td>   <td>  </td></tr>
+
+    {% set i = {"index": 0} %}
+    {% for key in ['Наружная стена', 'Окна', 'Витражи', 'Фонари', 'Окон ЛЛУ', 'Дверей наружных переходов',
+                'Двери', 'Покрытие', 'Чердачное перекрытие', 'Чердачное перекрытие',
+                'Перекрытие над холодным подвалом', 'Перекрытие над проездом', 'Конструкция в контакте с грунтом'] %}
+        <tr><td>{{name[i.index]}}</td>
+        <td>{{index[i.index]}}</td>
+        {% if key in r_con %}
+            <td>{{r_con[key][1]}}</td><td>{{r_con[key][2]}}</td>
+        {% else %}
+            <td>-</td><td>-</td>
+        {% endif %}
+        <td>  </td></tr>
+        {% if i.update({'index': i.index + 1}) %} {% endif %}
+    {% endfor %}
+</table>
+
+<div class="h1">5 Показатели вспомогательные</div>
+<table border="1">
+    <tr>
+    <th>Показатель</th>
+    <th>Обозначение показателя и единица измерения</th>
+    <th>Нормируемое значение показателя</th>
+    <th>Расчетное проектное значение показателя</th>
+    </tr>
+    <tr><td>16 Общий коэффициент теплопередачи здания</td>
+    <td>K<sub>общ</sub>, Вт/м²·°С</td>
+    {% if passp.r_pr_norm %}
+        <td>{{(1 / passp.r_pr_norm)|round(3)}}</td>
+    {% else %}
+        <td>-</td>
+    {% endif %}
+    {% if passp.r_pr %}
+        <td>{{(1 / passp.r_pr)|round(3)}}</td>
+    {% else %}
+        <td>-</td>
+    {% endif %}
+    <tr><td>17 Средняя кратность воздухообмена здания за отопительный период при удельной норме воздухообмена</td>
+    <td>n<sub>в</sub>, ч<sup>-1</sup></td>  <td> - </td> <td>{{passp.n_v}}</td> </tr>
+    <tr><td>18 Удельные бытовые тепловыделения в здании</td><td>q<sub>быт</sub>, Вт/м²</td>  <td> - </td><td>{{passp.q_bit}}</td> </tr>
+    <tr><td>19 Тарифная цена тепловой энергии для проектируемого здания</td><td>q<sub>быт</sub>, Вт/м²</td>  <td> - </td>
+    <td> - </td> </tr>
+</table>
+
+<div class="h1">6 Удельные характеристики</div>
+<table border="1">
+    <tr>
+    <th>Показатель</th>
+    <th>Обозначение показателя и единица измерения</th>
+    <th>Нормируемое значение показателя</th>
+    <th>Расчетное проектное значение показателя</th>
+    </tr>
+    <tr><td>20 Удельная теплозащитная характеристика здания</td><td>k<sub>об</sub>, Вт/м³·°С</td>  <td>{{passp.k_ob_tr}}</td><td>{{passp.k_ob}}</td> </tr>
+    <tr><td>21 Удельная вентиляционная характеристика здания</td><td>k<sub>вент</sub>, Вт/м³·°С</td>  <td> - </td><td>{{passp.k_vent}}</td> </tr>
+    <tr><td>22 Удельная характеристика бытовых тепловыделений здания</td><td>k<sub>быт</sub>, Вт/м³·°С</td>  <td> - </td><td>{{passp.k_bit}}</td> </tr>
+    <tr><td>23 Удельная характеристика теплопоступлений в здание от солнечной радиации</td><td>k<sub>рад</sub>, Вт/м³·°С</td>  <td> - </td><td>{{passp.k_rad}}</td> </tr>
+</table>
+
+<div class="h1">7 Коэффициенты</div>
+<table border="1">
+    <tr>
+    <th>Показатель</th>
+    <th>Обозначение показателя и единица измерения</th>
+    <th>Значение показателя</th>
+    </tr>
+    <tr><td>26 Коэффициент эффективности рекуператора</td><td>k<sub>эф</sub></td>  <td> - </td> </tr>
+</table>
+
+<div class="h1">8 Комплексные показатели расхода тепловой энергии</div>
+<table border="1">
+    <tr>
+    <th>Показатель</th>
+    <th>Обозначение показателя и единица измерения</th>
+    <th>Значение показателя</th>
+    </tr>
+    <tr><td>29 Расчетная удельная характеристика расхода тепловой энергии на отопление и вентиляцию здания за отопительный период</td>
+    <td>q<sub>от</sub><sup>р</sup>, Вт/м³·°С</td>  <td>{{passp.q_ot}}</td> </tr>
+    <tr><td>30 Нормируемая удельная характеристика расхода тепловой энергии на отопление и вентиляцию здания за отопительный период</td>
+    <td>q<sub>от</sub><sup>тр</sup>, Вт/м³·°С</td>  <td>{{passp.udeln}}</td> </tr>
+    <tr><td>31 Класс энергосбережения</td><td>  </td>  <td>{{ passp.class_energ[0] }}</td> </tr>
+    <tr><td>32 Соответствует ли проект здания нормативному требованию по теплозащите</td><td>  </td><td>Соответствует</td> </tr>
+</table>
+
+<div class="h1">9 Энергетические нагрузки здания</div>
+<table border="1">
+    <tr>
+    <th>Показатель</th>
+    <th>Обозначение</th>
+    <th>Единица измерений</th>
+    <th>Значение показателя</th>
+    </tr>
+    <tr><td>33 Удельный расход тепловой энергии на отопление и вентиляцию здания за отопительный период</td>
+    <td> q </td>  <td><p align="center">кВт·ч/(м³·год)</p>  <p align="center">кВт·ч/(м²·год)</p></td>
+    <td>
+        <p align="center">{{(0.024 * passp.gsop * passp.q_ot)|round(3)}}</p>
+        <p align="center">{{(0.024 * passp.gsop * passp.q_ot * h_floor)|round(3)}}</p>
+    </td> </tr>
+    <tr><td>34 Расход тепловой энергии на отопление и вентиляцию здания за отопительный период</td>
+    <td> Q<sub>от</sub><sup>год</sup> </td>  <td>кВт·ч/год</td>
+    <td> {{(0.024 * passp.gsop * passp.q_ot * passp.v_heat)|round(2)}} </td> </tr>
+    <tr><td>35 Общие теплопотери здания за отопительный период</td>
+    <td> Q<sub>общ</sub><sup>год</sup> </td>  <td>кВт·ч/год</td>
+    <td> {{(0.024 * passp.gsop * passp.v_heat * (passp.k_ob + passp.k_vent))|round(2)}} </td> </tr>
+</table>
+
+</body>
+</html>

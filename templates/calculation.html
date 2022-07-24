@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Расчет энергетического паспорта</title>
+</head>
+<body>
+
+<style>
+    TABLE {
+        border-collapse:collapse;
+        width:100%;
+    }
+    TD, TH {
+        padding:3px;
+        border:1px solid black;
+        font-size:14px;
+    }
+    table tr td {
+        text-align: left;
+    }
+    TR.itogo {
+        font-weight:bold;
+    }
+    CAPTION {
+        text-align:center;
+        font-size:14px;
+        margin-top:20px;
+    }
+    DIV.h1 {
+        text-align:center;
+        font-size:16px;
+        font-weight:bold;
+        margin-bottom:15px;
+    }
+    DIV.h2 {
+        text-align:center;
+        font-size:14px;
+        font-weight:bold;
+        margin-bottom:10px;
+    }
+    DIV.formula {
+        text-align:center;
+        font-size:14px;
+        margin-top:10px;
+        margin-bottom:10px;
+    }
+
+    DIV.txt {
+        text-align:justify;
+        font-size:14px;
+    }
+</style>
+
+<div class="h1">Расчет удельной характеристики расхода тепловой энергии на отопление и вентиляцию</div>
+<div class="txt">Расчетная удельная характеристика расхода тепловой энергии на отопление и вентиляцию здания определяется по формуле Г.1 СП 50.13330.2012</div>
+<div class="formula"><i>q<sub>от</sub><sup>р</sup> = k<sub>об</sub> + k<sub>вент</sub> - β<sub>КПИ</sub>(k<sub>быт</sub> + k<sub>рад</sub>)</i></div>
+<div class="formula">q<sub>от</sub><sup>р</sup> = {{calc.k_ob}} + {{calc.k_vent}} - {{calc.beta_kpi}}({{calc.k_bit}} + {{calc.k_rad}}) = {{calc.q_ot}} Вт/(м³∙°С)</div>
+<div class="txt">где <i>k<sub>об</sub></i> = {{calc.k_ob}} Вт/(м³∙°С) - удельная теплозащитная характеристика здания,
+    определяется в соответствии с приложением Ж СП 50.13330.2012;</div>
+<div class="txt"><i>k<sub>вент</sub></i> = {{calc.k_vent}} Вт/(м³∙°С) - удельная вентиляционная характеристика здания,
+    определяемая в соответствии с пунктом Г.2 приложения Г СП 50.13330.2012;</div>
+<div class="txt"><i>k<sub>быт</sub></i> = {{calc.k_bit}} Вт/(м³∙°С) - удельная характеристика бытовых тепловыделений здания,
+    определяемая в соответствии с пунктом Г.5 приложения Г СП 50.13330.2012;</div>
+<div class="txt"><i>k<sub>рад</sub></i> = {{calc.k_rad}} Вт/(м³∙°С) - удельная характеристика теплопоступлений в здание от
+    солнечной радиации, определяемая в соответствии с пунктом Г.6 приложения Г СП 50.13330.2012.</div>
+<div class="txt"><i>β<sub>КПИ</sub></i> = {{calc.beta_kpi}} - коэффициент полезного использования теплопоступлений,
+    определяемый по формуле Г.1а приложения Г СП 50.13330.2012</div>
+<div class="formula"><i>β<sub>КПИ</sub> = К<sub>рег</sub>/(1 + 0,5∙n<sub>в</sub>)</i> = {{calc.coef_regular}}/(1 + 0,5∙{{calc.n_v}}) = {{calc.beta_kpi}}</div>
+<div class="txt">здесь <i>К<sub>рег</sub></i> = {{calc.coef_regular}} - коэффициент эффективности регулирования подачи
+    теплоты в системах отопления ({{calc.regular}}), определяемое по пункту Г.1 приложения Г СП 50.13330.2012;</div>
+<div class="txt"><i>n<sub>в</sub></i> = {{calc.n_v}} ч<sup>-1</sup> - средняя кратность воздухообмена здания за отопительный
+    период, определяемая по формуле Г.4 приложения Г СП 50.13330.2012</div>
+<div class="formula"><i>n<sub>в</sub> = [(L<sub>вент</sub>∙n<sub>вент</sub>)/168 + (G<sub>инф</sub>∙n<sub>инф</sub>)/(168∙ρ<sub>в</sub><sup>вент</sup>)]/(β<sub>v</sub>∙V<sub>от</sub>)</i></div>
+<div class="formula"><i>n<sub>в</sub></i> = [({{calc.L_vent}} ∙ {{calc.n_vent}})/168 + ({{calc.G_inf}} ∙ {{calc.n_inf}})/(168 ∙ {{calc.p_vent}})]/(0,85 ∙ {{calc.v_heat}}) = {{calc.n_v}} ч<sup>-1</sup></div>
+
+{% if calc.typ in ["Жилое", "Общежитие"] %}
+    {% if data.a_min < 20 %}
+        <div class="txt">где <i>L<sub>вент</sub></i> = 3∙А<sub>ж</sub> = 3∙{{calc.area_live}} = {{calc.L_vent}} м³/ч - 
+            количество приточного воздуха в здание при неорганизованном притоке и расчетной заселенностью 
+            менее 20 м² общей площади на человека, определяемая по пункту Г.3 приложения Г СП 50.13330.2012;</div>
+    {% else %}
+        {% if 30 * calc.tenants > calc.L_vent %}
+            <div class="txt">где <i>L<sub>вент</sub></i> = 30∙m = 3∙{{calc.tenants}} = {{calc.L_vent}} м³/ч - количество
+                приточного воздуха в здание при неорганизованном притоке и расчетной заселенностью более 20 м² общей
+                площади на человека, определяемая по пункту Г.3 приложения Г СП 50.13330.2012;</div>
+            <div class="txt"><i>m</i> = {{calc.tenants}} чел - количество жителей;</div>
+        {% else %}
+            <div class="txt">где <i>L<sub>вент</sub></i> = 0,35∙h<sub>эт</sub>∙А<sub>об</sub> =
+                0,35∙{{data.h_floor}}∙{{calc.area_calc}} = {{calc.L_vent}} м³/ч - количество приточного воздуха в здание
+                при неорганизованном притоке и расчетной заселенностью более 20 м² общей площади на человека,
+                определяемая по пункту Г.3 приложения Г СП 50.13330.2012;</div>
+            <div class="txt"><i>А<sub>об</sub></i> = {{calc.area_calc}} м² - общая площадь квартир;</div>
+        {% endif %}
+    {% endif %}
+{% else %}
+<div class="txt">где <i>L<sub>вент</sub></i> = {{calc.L_vent}} м³/ч - количество приточного воздуха в здание при работе механической вентиляции;</div>
+{% endif %}
+
+<div class="txt"><i>n<sub>вент</sub></i> = 168 ч - число часов работы вентиляции в течение недели;</div>
+<div class="txt"><i>n<sub>инф</sub></i> = 168 ч - число часов инфильтрации в течение недели;</div>
+<div class="txt"><i>β<sub>v</sub></i> = 0,85 - коэффициент снижения объема воздуха в здании, учитывающий наличие внутренних ограждающих конструкций;</div>
+<div class="txt"><i>V<sub>от</sub></i> = {{calc.v_heat}} м³ - отапливаемый объем здания;</div>
+<div><i>G<sub>инф</sub></i> = {{calc.G_inf}} кг/ч - количество инфильтрующегося воздуха в здание через ограждающие конструкции, определяемое согласно Г.4 СП 50.13330.2012;</div>
+{% if calc.typ in ["Жилое", "Общежитие"] %}
+    {% if calc.floors <= 3 %}
+        <div class="formula"><i>G<sub>инф</sub> = 0,3 ∙ 0,85 ∙ V<sub>ЛЛУ</sub></i> = 0,3 ∙ 0,85 ∙ {{calc.v_llu}} = {{calc.G_inf}} кг/ч</div>
+    {% elif 4 <= calc.floors <= 9 %}
+        <div class="formula"><i>G<sub>инф</sub> = 0,45 ∙ 0,85 ∙ V<sub>ЛЛУ</sub></i> = 0,3 ∙ 0,85 ∙ {{calc.v_llu}} = {{calc.G_inf}} кг/ч</div>
+    {% else %}
+        <div class="formula"><i>G<sub>инф</sub> = 0,6 ∙ 0,85 ∙ V<sub>ЛЛУ</sub></i> = 0,3 ∙ 0,85 ∙ {{calc.v_llu}} = {{calc.G_inf}} кг/ч</div>
+    {% endif %}
+{% else %}
+    {% if calc.floors <= 3 %}
+        <div class="formula"><i>G<sub>инф</sub> = 0,1 ∙ 0,85 ∙ V<sub>от</sub></i> = 0,3 ∙ 0,85 ∙ {{calc.v_heat}} = {{calc.G_inf}} кг/ч</div>
+    {% elif 4 <= calc.floors <= 9 %}
+        <div class="formula"><i>G<sub>инф</sub> = 0,15 ∙ 0,85 ∙ V<sub>от</sub></i> = 0,3 ∙ 0,85 ∙ {{calc.v_heat}} = {{calc.G_inf}} кг/ч</div>
+    {% else %}
+        <div class="formula"><i>G<sub>инф</sub> = 0,2 ∙ 0,85 ∙ V<sub>от</sub></i> = 0,3 ∙ 0,85 ∙ {{calc.v_heat}} = {{calc.G_inf}} кг/ч</div>
+    {% endif %}
+{% endif %}
+
+<div class="txt"><i>ρ<sub>в</sub><sup>вент</sup></i> = {{calc.p_vent}} кг/м³ - средняя плотность приточного воздуха
+    за отопительный период определяемая по формуле Г.3 приложения Г СП 50.13330.2012</div>
+<div class="formula">ρ<sub>в</sub><sup>вент</sup> = 353/[273 + t<sub>от</sub>] = 353/[273 + {{calc.t_ot}}] = {{calc.p_vent}} кг/м³</div>
+
+<div class="txt">Удельная вентиляционная характеристика здания определяется по формуле Г.2 приложения Г СП 50.13330.2012</div>
+<div class="formula"><i>k<sub>вент</sub> = 0,28с(L<sub>вент</sub>∙ρ<sub>в</sub><sup>вент</sup>∙n<sub>вент</sub>∙(1-k<sub>эф</sub>) + G<sub>инф</sub>∙n<sub>инф</sub>)/(168∙V<sub>от</sub>)</i></div>
+<div class="formula"><i>k<sub>вент</sub></i> = 0,28∙1({{calc.L_vent}}∙{{calc.p_vent}}∙{{calc.n_vent}}(1 - 0) + {{calc.G_inf}}∙{{calc.n_inf}})/(168∙{{calc.v_heat}}) = {{calc.k_vent}} Вт/(м³∙°С)</div>
+<div class="txt">где с - удельная теплоемкость воздуха, равная 1 кДж/(кг·°С)</div>
+
+
+{% if calc.typ in ["Жилое", "Общежитие"] %}
+    <div class="txt">Удельная характеристика бытовых тепловыделений жилого здания определяется по формуле Г.6 приложения Г СП 50.13330.2012</div>
+    <div class="formula"><i>k<sub>быт</sub> = (q<sub>быт</sub>∙А<sub>ж</sub>)/[V<sub>от</sub>(t<sub>в</sub> - t<sub>от</sub>)]</i></div>
+    <div class="formula"><i>k<sub>быт</sub></i> = ({{calc.q_bit}}∙{{calc.area_live}})/[{{calc.v_heat}}({{calc.t_int}} - ({{calc.t_ot}}))] = {{calc.k_bit}} Вт/(м³∙°С)</div>
+    <div class="txt">где q<sub>быт</sub> = {{calc.q_bit}} - величина бытовых тепловыделений на 1 м² площади жилых
+        помещений c расчетной заселенностью {{data.a_ras}} м² на человека.</div>
+    <div class="txt">где <i>V<sub>от</sub></i> = {{calc.v_heat}} м³ - отапливаемый объем здания;</div>
+    <div class="txt"><i>А<sub>ж</sub></i> = {{calc.area_live}} м² - жилая площадь квартир;</div>
+    <div class="txt"><i>t<sub>в</sub></i> = {{calc.t_int}} °С - температура внутреннего воздуха;</div>
+    <div class="txt"><i>t<sub>от</sub></i> = {{calc.t_ot}} °С - средняя температура наружного воздуха в отопительный период;</div>
+{% else %}
+    <div class="txt">Удельная характеристика бытовых тепловыделений нежилого здания определяется по формуле Г.6а приложения Г СП 50.13330.2012</div>
+    <div class="formula"><i>k<sub>быт</sub> = (q<sub>быт</sub>∙А<sub>р</sub>)/[V<sub>от</sub>(t<sub>в</sub> - t<sub>от</sub>)]</i></div>
+    <div class="formula"><i>k<sub>быт</sub></i> = ({{calc.q_bit}}∙{{calc.area_calc}})/[{{calc.v_heat}}({{calc.t_int}} - ({{calc.t_ot}}))] = {{calc.k_bit}} Вт/(м³∙°С)</div>
+    <div class="txt">где <i>А<sub>р</sub></i> = {{calc.area_calc}} м² - расчетная площадь здания;</div>
+{% endif %}
+
+<div class="txt">Удельная характеристика теплопоступлений в здание от солнечной радиации определяется по формуле Г.7 приложения Г СП 50.13330.2012</div>
+<div class="formula"><i>k<sub>рад</sub> = (11,6∙Q<sub>рад</sub><sup>год</sup>)/(V<sub>от</sub>∙ГСОП)</i></div>
+<div class="formula"><i>k<sub>рад</sub></i> = (11,6∙{{calc.Q_solar}})/[{{calc.v_heat}} ∙ {{calc.gsop}}) = {{calc.k_rad}} Вт/(м³∙°С)</div>
+<div>где <i>Q<sub>рад</sub><sup>год</sup></i> = {{calc.Q_solar}} МДж/год - теплопоступления через окна и фонари от
+    солнечной радиации в течение отопительного периода для четырех фасадов зданий, ориентированных по четырем
+    направлениям определяемые по методике раздела 10 СП 345.1325800.2017;</div>
+
+<div>Удельный расход тепловой энергии на отопление и вентиляцию здания за отопительный период определяется
+    по формуле Г.9 и Г.9а приложения Г СП 50.13330.2012</div>
+<div class="formula"><i>q = 0,024∙ГСОП∙q<sub>от</sub><sup>р</sup></i> = 0,024∙{{calc.gsop}}∙{{calc.q_ot}} =
+    {{(0.024 * calc.gsop * calc.q_ot)|round(2)}} кВт·ч/(м³·год).</div>
+<div class="formula"><i>q = 0,024∙ГСОП∙q<sub>от</sub><sup>р</sup>∙h</i> = 0,024∙{{calc.gsop}}∙{{calc.q_ot}}∙{{data.h_floor}} =
+    {{(0.024 * calc.gsop * calc.q_ot * data.h_floor)|round(2)}} кВт·ч/(м²·год).</div>
+<div class="txt">где <i>h</i> = {{data.h_floor}} м - средняя высота этажа здания;</div>
+<div class="txt">Расход тепловой энергии на отопление и вентиляцию здания за отопительный период определяется по
+    формуле Г.10 приложения Г СП 50.13330.2012</div>
+<div class="formula"><i>Q<sub>от</sub><sup>год</sup> = 0,024∙ГСОП∙V<sub>от</sub>∙q<sub>от</sub><sup>р</sup></i> =
+    0,024∙{{calc.gsop}}∙{{calc.v_heat}}∙{{calc.q_ot}} = {{(0.024 * calc.gsop * calc.q_ot * calc.v_heat)|round(2)}} кВт·ч/год.</div>
+<div class="txt">Общие теплопотери здания за отопительный период определяется по формуле Г.11 приложения Г СП 50.13330.2012</div>
+<div class="formula"><i>Q<sub>общ</sub><sup>год</sup> = 0,024∙ГСОП∙V<sub>от</sub>(k<sub>об</sub> - k<sub>вент</sub>)</i> =
+    0,024∙{{calc.gsop}}∙{{calc.v_heat}}∙({{calc.k_ob}} + {{calc.k_vent}}) = {{(0.024 * calc.gsop * calc.v_heat * (calc.k_ob + calc.k_vent))|round(2)}} кВт·ч/год.</div>
+
+<div class="txt">Нормируемая удельная характеристика расхода тепловой энергии на отопление и вентиляцию здания определяется по
+    таблице 14 СП 50.13330.2012 для типа здания - {{calc.typ.lower()}}, и этажности здания - {{calc.floors}},
+    составляет q<sub>от</sub><sup>тр</sup> = {{calc.udeln}} Вт/(м³∙°С) с учетом 'требования по снижению на 20% с
+    1 июля 2018 г. в соответствии с Приказом Министерства строительства и жилищно-коммунального хозяйства РФ от
+    17 ноября 2017 г. N 1550/пр "Об утверждении Требований энергетической эффективности зданий, строений, сооружений" </div>
+<div class="txt">Величина отклонения расчетного (фактического) значения удельной характеристики расхода тепловой энергии
+    на отопление и вентиляцию здания от нормируемого составляет {{calc.otklon}} %.</div>
+<div class="txt">В соответствии с таблицей 15 СП 50.13330.2012 для здания определен класс энергосбережения - {{calc.class_energ[0]}} ({{calc.class_energ[1]}}).</div>
+
+</body>
+</html>

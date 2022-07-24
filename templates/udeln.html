@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Расчет удельной теплозащитной характеристики здания</title>
+</head>
+<body>
+
+<style>
+    TABLE {
+        border-collapse:collapse;
+        width:100%;
+    }
+    TD, TH {
+        padding:3px;
+        border:1px solid black;
+        font-size:14px;
+    }
+    table tr td {
+        text-align: left;
+    }
+    table tr td+td {
+        text-align: center;
+    }
+    TR.itogo {
+        font-weight:bold;
+    }
+    CAPTION {
+        text-align:center;
+        font-size:14px;
+        margin-top:20px;
+    }
+    DIV.h1 {
+        text-align:center;
+        font-size:16px;
+        font-weight:bold;
+        margin-bottom:15px;
+    }
+    DIV.h2 {
+        text-align:center;
+        font-size:14px;
+        font-weight:bold;
+        margin-bottom:10px;
+    }
+    DIV.formula {
+        text-align:center;
+        font-size:14px;
+        margin-top:10px;
+        margin-bottom:10px;
+    }
+
+    DIV.txt {
+        text-align:justify;
+        font-size:14px;
+    }
+</style>
+
+<div class="h1">Удельная теплозащитная характеристика здания</div>
+<div class="txt">Расчет удельной теплозащитной характеристики здания производится в соответствии с приложением Ж СП 50.133300.2012 [1] по формуле Ж.1 [1]</div>
+<div class="formula">k<sub>об</sub> = 1/V<sub>от</sub>·Σ(n<sub>i,j</sub>·A<sub>ф,i</sub>/R<sub>o,j</sub><sup>пр</sup>)</div>
+<div class="txt">где V<sub>от</sub> = {{udeln.v_heat}} м³ – отапливаемый объем здания;</div>
+<div class="txt">А<sub>ф,i</sub> – площадь соответствующего фрагмента теплозащитной оболочки здания;</div>
+<div class="txt">R<sub>о,j</sub><sup>пр</sup> – приведенное сопротивление теплопередачи фрагмента теплозащитной оболочки здания;</div>
+<div class="txt">n<sub>i,j</sub> – коэффициент, учитывающий отличие внутренней или наружной температуры у конструкции от
+принятых в расчете ГСОП, определяется по формуле 5.3 [1];</div>
+<div class="formula"> n = (t<sub>в</sub><sup>*</sup> - t<sub>от</sub><sup>*</sup>)/(t<sub>в</sub> - t<sub>от</sub>) </div>
+<div class="txt">t<sub>в</sub>, t<sub>от</sub> – температура внутреннего воздуха и температура наружного воздуха отопительного периода;</div>
+<div class="txt">t<sub>в</sub><sup>*</sup>, t<sub>от</sub><sup>*</sup> - средняя температура внутреннего и наружного воздуха помещения.</div>
+
+<table border="1">
+    <caption>Таблица. Характеристики ограждающих конструкций здания</caption>
+    <tr>
+    <th>Название конструкции</th>
+    <th>t<sub>в</sub>, °С</th>
+    <th>t<sub>н</sub>, °С</th>
+    <th>n</th>
+    <th>A, м²</th>
+    <th>R<sub>o</sub>,м²·ºС/Вт</th>
+    <th>n·A/R<sub>o</sub></th>
+    <th>%</th>
+    </tr>
+    {% for con in constr %}
+            <tr><td>{{con.name}}</td><td>{{con.t_int}}</td><td>{{con.t_ext}}</td>
+            <td>{{con.n_coef}}</td><td>{{con.area}}</td><td>{{con.r_pr}}</td>
+            <td>{{con.nAR}}</td><td>{{con.pr}}</td></tr>
+    {% endfor %}
+    <tr class="itogo"><td>Итого:</td><td></td><td></td><td></td><td>{{sum_a}}</td><td></td><td>{{udeln.sum_nAR}}</td><td>100</td></tr>
+</table>
+<div class="txt">Удельная теплозащитная характеристика здания равна</div>
+<div class="formula">k<sub>об</sub> = 1/{{udeln.v_heat}}·{{udeln.sum_nAR}} = {{udeln.k_ob}} Вт/(м³∙°С).</div>
+{% if udeln.k_ob < udeln.k_ob_tr %}
+<div class="txt">Так как расчетная удельная теплозащитная характеристика равная {{udeln.k_ob}} Вт/(м³∙°С) меньше
+нормируемой величины, равной {{udeln.k_ob_tr}} Вт/(м³∙°С), то требование показателя б) пункта 5.1
+СП 50.133300.2012 <b>выполняется</b>.</div>
+{% else %}
+<div class="txt">Так как расчетная удельная теплозащитная характеристика равная {{udeln.k_ob}} Вт/(м³∙°С) больше
+нормируемой величины, равной {{udeln.k_ob_tr}} Вт/(м³∙°С), то требование показателя б) пункта 5.1
+СП 50.133300.2012 <b>не выполняется</b>.</div>
+{% endif %}
+</body>
+</html>

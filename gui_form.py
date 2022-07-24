@@ -9,7 +9,7 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-
+from PyQt5.QtWebEngineWidgets import QWebEngineView
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -95,11 +95,9 @@ class Ui_MainWindow(object):
         self.verticalLayout_6.setObjectName("verticalLayout_6")
         self.verticalLayout_5 = QtWidgets.QVBoxLayout()
         self.verticalLayout_5.setObjectName("verticalLayout_5")
-        self.label_5 = QtWidgets.QLabel(self.tab2)
-        self.label_5.setObjectName("label_5")
-        self.verticalLayout_5.addWidget(self.label_5)
-        self.text_norm = QtWidgets.QTextEdit(self.tab2)
-        self.text_norm.setObjectName("text_norm")
+        self.text_norm = QWebEngineView()
+        # self.text_norm = QtWidgets.QTextEdit(self.tab2)
+        # self.text_norm.setObjectName("text_norm")
         self.verticalLayout_5.addWidget(self.text_norm)
         self.verticalLayout_6.addLayout(self.verticalLayout_5)
         self.tabWidget.addTab(self.tab2, "")
@@ -162,7 +160,6 @@ class Ui_MainWindow(object):
         self.but_save_as.setText(_translate("MainWindow", "Сохранить как"))
         self.label.setText(_translate("MainWindow", "Общие данные о здании"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab1), _translate("MainWindow", "Tab 1"))
-        self.label_5.setText(_translate("MainWindow", "Вывод расчета"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab2), _translate("MainWindow", "Page"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab3), _translate("MainWindow", "Tab 2"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab4), _translate("MainWindow", "Page"))

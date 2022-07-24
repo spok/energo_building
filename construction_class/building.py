@@ -1,6 +1,7 @@
 from math import log
 from copy import copy
 from PyQt5.Qt import QStandardItem
+from jinja2 import Environment, FileSystemLoader
 from func import load_solar_radiation, load_orientation_coef, load_udeln, MyCombo
 from construction_class.construction import *
 from construction_class.windows import *
@@ -74,7 +75,7 @@ class Building:
         self.k_vent = 0.0
         self.beta_kpi = 0.0
         self.q_ot = 0.0
-        self.class_energ = []
+        self.class_energ = ["E", "Низкий"]
         self.otklon = 0.0
         self.r_pr_norm = 0.0
         self.r_pr = 0.0
@@ -665,311 +666,66 @@ class Building:
         return s
 
     def get_norm_html(self, text: object):
-        # Вставка расчета ГСОП
-        s = '<h2 align="center">Климатические параметры отопительного периода</h2>'
-        s += "<p>Градусо-сутки отопительного периода (ГСОП) определяется по формуле 5.2 СП 50.13330.2012</p>"
-        s += '<p align="center"><i>ГСОП = (t<sub>в</sub> - t<sub>от</sub>)·z<sub>от</sub></i></p>'
-        s += f'<p align="justify">где <i>t<sub>в</sub></i> = {self.t_int} °С - температура внутреннего воздуха помещений здания (определяется по ГОСТ 30494-96);</p>'
-        s += f'<p align="justify"><i>t<sub>от</sub></i> = {self.t_ot} °С – средняя температура наружного воздуха отопительного периода '
-        s += f"для г.{self.citi}, для периода со средней суточной температурой наружного воздуха не более "
-        if self.typ == "Детское учреждение":
-            s += f"{10} °С, определяется по табл. 1 СП 131.13330.2012; </p>"
-        else:
-            s += f"{8} °С, определяется по табл. 1 СП 131.13330.2012; </p>"
-        s += f'<p align="justify"><i>z<sub>от</sub></i> = {self.z_ot} °С – продолжительность отопительного периода '
-        s += f"для г.{self.citi}, для периода со средней суточной температурой наружного воздуха не более "
-        if self.typ == "Детское учреждение":
-            s += f"{10} °С, определяется по табл. 1 СП 131.13330.2012; </p>"
-        else:
-            s += f"{8} °С, определяется по табл. 1 СП 131.13330.2012; </p>"
-        s += f'<p align="center"><i>ГСОП</i> = ({self.t_int} - ({self.t_ot}))·{self.z_ot} = {self.gsop} ºС·сут<p>'
-        s += '<p></p>'
-        s += '<h2 align="center">Требования к ограждающим конструкциям здания</h2>'
-        s += '<p></p>'
-        text.insertHtml(s)
-
-        # вставка расчета нормативных сопротивлений теплопередаче
-        name_low = ['наружной стены', 'покрытия', 'чердачного перекрытия', 'перекрытия над подвалом',
-                    'перекрытия над проездом', 'окон', 'витражей', 'фонарей', 'дверей', 'ворот']
+        other_name = {'Наружная стена': 'наружной стены', 'Покрытие': 'покрытия',
+                      'Чердачное перекрытие': 'чердачного перекрытия',
+                      'Перекрытие над холодным подвалом': 'перекрытия над подвалом',
+                      'Перекрытие над проездом': 'перекрытия над проездом', 'Окна': 'окон', 'Витражи': 'витражей',
+                      'Фонари': 'фонарей', 'Двери': 'дверей', 'Ворота': 'ворот'}
+        attic = dict()
+        basement = dict()
+        attic["has"] = False
+        basement["has"] = False
+        attic["elem"] = None
+        basement["elem"] = None
         for key in self.norm:
-            con = self.norm[key]
-            name_con = name_low[self.typ_constr.index(key)]
-            if key in ['Наружная стена', 'Покрытие', 'Чердачное перекрытие', 'Перекрытие над холодным подвалом',
-                       'Перекрытие над проездом', 'Окна', 'Витражи', 'Фонари']:
-                s = '<p></p>'
-                s += f'<h3 align="center">{key}</h3>'
-                s += f'<p>Для {name_con} жилых зданий в климатических условиях ' \
-                     f'г. {self.citi} требуемое сопротивление теплопередаче определяется по формуле интерполяции</p>'
-                s += f'<p align="center">R<sub>о</sub><sup>тр</sup> = R<sub>1</sub> + (R<sub>2</sub> - R<sub>1</sub>)' \
-                     f'/(ГСОП<sub>2</sub> - ГСОП<sub>1</sub>)∙ (ГСОП - ГСОП<sub>1</sub>)</p>'
-                s += f'<p align="center">R<sub>о</sub><sup>тр</sup> = {con["R1"]} + ({con["R2"]} - {con["R1"]})' \
-                     f'/({con["GSOP2"]} - {con["GSOP1"]})∙ ({self.gsop} - {con["GSOP1"]}) = {con["Rtr"]} м²·°С/Вт</p>'
-                s += f'<p>где ГСОП<sub>1</sub> = {con["GSOP1"]}, ГСОП<sub>2</sub> = {con["GSOP2"]} - ' \
-                     f'градусо-сутки отопительного периода по таблице 3 СП 50.13330.2012, между которыми ' \
-                     f'находится рассчитанная величина ГСОП;</p>'
-                s += f'<p>R<sub>1</sub> = {con["R1"]} м²·°С/Вт, R<sub>2</sub> = {con["R2"]} м²·°С/Вт - ' \
-                     f'нормативное сопротивление ' \
-                     f'теплопередаче конструкции, , соответствующие величинам градусо-суток отопительного периода' \
-                     f' {con["GSOP1"]} и {con["GSOP2"]}, для {name_con} здания по табл. 3 СП 50.13330.2012.</p>'
-                s += f'<p>Таким образом, приведенное сопротивление теплопередаче {name_con} должно быть ' \
-                     f'не менее {con["Rtr"]} м²·°С/Вт.</p>'
-                s += f'<p>Допускается снижение нормируемого значения сопротивления теплопередаче {name_con} ' \
-                     'в соответствии с пунктом 5.2 и формулой 5.1 СП 50.13330.2012</p>'
-                s += f'<p align="center">R<sub>o</sub><sup>тр</sup> = R<sub>o</sub><sup>тр</sup>·m<sub>p</sub> = ' \
-                     f'{con["Rtr"]}·{con["mp"]} = {con["Rmin"]} м²·°С/Вт.</p>'
-                s += f'<p>Таким образом, приведенное сопротивление теплопередаче {name_con} должно быть ' \
-                     f'не менее {con["Rmin"]} м²·°С/Вт.</p>'
-                s += f'<p></p>'
-                text.insertHtml(s)
-                # вывод при наличии теплого чердака
-                has_attic = False
-                elem_attic = None
-                if key == 'Чердачное перекрытие':
+            if key == 'Чердачное перекрытие':
+                for elem in self.constructions:
+                    if elem.purpose == 'Внутреняя чердака':
+                        attic["has"] = True
+                        attic["elem"] = elem
+                if attic["has"]:
+                    attic["plus"] = ''
+                    attic["minus"] = ''
                     for elem in self.constructions:
                         if elem.purpose == 'Внутреняя чердака':
-                            has_attic = True
-                            elem_attic = elem
-                if has_attic == True:
-                    s = """<p>В соответствии с пунктом 5.2 допускается снижать нормируемое сопротивление 
-                    теплопередаче чердачного перекрытия, если температура воздуха чердака отличается от температуры 
-                    наружного воздуха. Так как чердак не вентилируется наружным воздухом через проемы в наружных 
-                    стенах, т.е. является теплым, то температура воздуха в чердаке будет значительно выше температуры 
-                    наружного воздуха.</p>"""
-                    s += """<p>Снижение уровня нормируемого сопротивления теплопередаче осуществляется умножением его 
-                    на коэффициент <i>n</i>.</p>"""
-                    s += """<p>Так как температура внутреннего воздуха чердака, под которым располагается перекрытие, 
-                    отличается от температуры внутреннего воздуха помещений здания, необходимо рассчитать коэффициент 
-                    по формуле 5.3</p>"""
-                    s += f'<p align="center"> n = (t<sub>в</sub><sup>*</sup> - t<sub>н</sub><sup>*</sup>) / ' \
-                         f'(t<sub>в</sub> - t<sub>н</sub>) = ({self.t_int} - {elem_attic.t_ext}) / ' \
-                         f'({self.t_int} - ({self.t_ot})) = {elem_attic.n_coef}</p>'
-                    s += f'<p>где t<sub>в</sub><sup>*</sup> = {self.t_int} °С - температура внутреннего воздуха для ' \
-                         f'помещения находящегося под перекрытием;</p>'
-                    s += f'<p>t<sub>н</sub><sup>*</sup> = {elem_attic.t_ext} °С - температура наружного воздуха по ' \
-                         f'отношению к перекрытию чердака, т.е. температура воздуха в чердаке, определяемая по ' \
-                         f'расчету теплового баланса </p>'
-                    s += f'<p>t<sub>в</sub> = {self.t_int} °С - нормативная температура внутреннего воздуха;</p>'
-                    s += f'<p>t<sub>н</sub> = {self.t_ot} °С - нормативная температура наружного воздуха, ' \
-                         f'принимаемая равной температуре отопительного периода.</p>'
-                    s += f'<p>Температура воздуха внутри чердачного пространства t<sub>н</sub><sup>*</sup>, ' \
-                         f'определяется из уравнения теплового баланса в соответствии с разделом 11.1 ' \
-                         f'СП 345.1325800.2017 «Здания жилые и общественные. Правила проектирования ' \
-                         f'тепловой защиты» </p>'
-                    s += '<p align="center"><img src="formuls/formula_tn.jpg"></p>'
-                    s += '<p>В формуле значения с индексом «+» соответствуют ограждающими конструкциям, ' \
-                         'расположенным между помещением, для которого рассчитывается температура воздуха, ' \
-                         'и внутренними помещениями здания, имеющими температуру tв. В формуле значения с ' \
-                         'индексом «-» соответствуют ограждающими конструкциям, расположенным между помещением, ' \
-                         'для которого рассчитывается температура воздуха, и наружным воздухом, ' \
-                         'имеющим температуру t<sub>н</sub>. </p>'
-                    s += '<p>Согласно геометрическим показателям ограждений чердака, определены сопротивления ' \
-                         'теплопередаче R и площади А (площади определены по внутренней поверхности ограждающих ' \
-                         'конструкций) отдельных видов ограждений отраженные в таблицах. </p>'
-                    text.insertHtml(s)
-                    s = """<style type="text/css">
-                           TABLE {
-                            border-collapse: collapse;
-                           }
-                           TD, TH {
-                            padding: 3px;
-                            border: 1px solid black;
-                           }
-                          </style>
-                       <table border="1">
-                       <caption>Таблица. Конструкции, находящиеся между чердачным пространством и 
-                       внутренними помещениями</caption>
-                       <tr>
-                        <th>Название конструкции</th>
-                        <th>A, м²</th>
-                        <th>R<sub>o</sub>,м²·ºС/Вт</th>
-                       </tr>"""
-                    s_plus = ''
-                    s_minus = ''
-                    for elem in self.constructions:
-                        if elem.purpose == 'Внутреняя чердака':
-                            s += f"""<tr><td>{elem.get_construction_name()}</td><td>{elem.area}</td>
-                            <td>{elem.r_pr}</td></tr>"""
-                            if len(s_plus) == 0:
-                                s_plus += f'{elem.area}/{elem.r_pr}'
+                            if len(attic["plus"]) == 0:
+                                attic["plus"] += f'{elem.area}/{elem.r_pr}'
                             else:
-                                s_plus += f' + {elem.area}/{elem.r_pr}'
-                    s += """</table>"""
-                    s += """<table border="1">
-                       <caption>Таблица. Конструкции, находящиеся между чердачным пространством и 
-                       наружной средой</caption>
-                       <tr>
-                        <th>Название конструкции</th>
-                        <th>A, м²</th>
-                        <th>R<sub>o</sub>,м²·ºС/Вт</th>
-                       </tr>"""
-                    for elem in self.constructions:
+                                attic["plus"] += f' + {elem.area}/{elem.r_pr}'
                         if elem.purpose == 'Наружная чердака':
-                            s += f"""<tr><td>{elem.get_construction_name()}</td><td>{elem.area}</td>
-                            <td>{elem.r_pr}</td></tr>"""
-                            if len(s_minus) == 0:
-                                s_minus += f'{elem.area}/{elem.r_pr}'
+                            if len(attic["minus"]) == 0:
+                                attic["minus"] += f'{elem.area}/{elem.r_pr}'
                             else:
-                                s_minus += f' + {elem.area}/{elem.r_pr}'
-                    s += '</table>'
-                    s += '<p>Расчет температуры воздуха чердака при расчетных температурных условиях по формуле</p>'
-                    s += f'<p align="center">t<sub>н</sub><sup>*</sup> = ({self.t_int}·({s_plus}) + ({self.t_ot})· ' \
-                         f'({s_minus})/({s_plus} + {s_minus}) = {elem_attic.t_ext} ºС.</p>'
-                    s += f'<p>Нормируемое значение сопротивления теплопередаче перекрытия определяется в ' \
-                         f'соответствие с пунктом 5.2 СП 50.13330.2012</p>'
-                    s += f'<p align="center"><i>R<sub>о</sub><sup>тр</sup> = n·R<sub>о</sub><sup>тр</sup></i> = ' \
-                         f'{elem_attic.n_coef}·{con["Rtr"]} = {elem_attic.r_tr} м²·ºС/Вт</p>'
-                    s += f'<p>Таким образом, приведенное сопротивление теплопередаче чердачного перекрытия ' \
-                         f'должно быть не менее {elem_attic.r_tr} м²·ºС/Вт. </p>'
-                    s += f'<p></p>'
-                    text.insertHtml(s)
-
-                has_basement = False
-                elem_basement = None
-                if key == 'Перекрытие над холодным подвалом':
+                                attic["minus"] += f' + {elem.area}/{elem.r_pr}'
+            if key == 'Перекрытие над холодным подвалом':
+                for elem in self.constructions:
+                    if elem.purpose == 'Внутреняя подвала':
+                        basement["has"] = True
+                        basement["elem"] = elem
+                if basement["has"]:
+                    basement["plus"] = ''
+                    basement["minus"] = ''
                     for elem in self.constructions:
                         if elem.purpose == 'Внутреняя подвала':
-                            has_basement = True
-                            elem_basement = elem
-                if has_basement == True:
-                    s = """<p>В соответствии с пунктом 5.2 допускается снижать нормируемое сопротивление 
-                    теплопередаче перекрытия подвала, если температура воздуха подвала отличается от температуры 
-                    наружного воздуха. Так как подвал не вентилируется наружным воздухом через проемы в наружных 
-                    стенах, т.е. является теплым, то температура воздуха в подвале будет значительно выше температуры 
-                    наружного воздуха.</p>"""
-                    s += """<p>Снижение уровня нормируемого сопротивления теплопередаче осуществляется умножением его 
-                    на коэффициент <i>n</i>.</p>"""
-                    s += """<p>Так как температура внутреннего воздуха подвала, над которым располагается перекрытие, 
-                    отличается от температуры внутреннего воздуха помещений здания, необходимо рассчитать коэффициент 
-                    по формуле 5.3</p>"""
-                    s += f'<p align="center"> n = (t<sub>в</sub><sup>*</sup> - t<sub>н</sub><sup>*</sup>) / ' \
-                         f'(t<sub>в</sub> - t<sub>н</sub>) = ({self.t_int} - {elem_basement.t_ext}) / ' \
-                         f'({self.t_int} - ({self.t_ot})) = {elem_basement.n_coef}</p>'
-                    s += f'<p>где t<sub>в</sub><sup>*</sup> = {self.t_int} °С - температура внутреннего воздуха для ' \
-                         f'помещения находящегося над перекрытием;</p>'
-                    s += f'<p>t<sub>н</sub><sup>*</sup> = {elem_basement.t_ext} °С - температура наружного воздуха по ' \
-                         f'отношению к перекрытию подвала, т.е. температура воздуха в подвале, определяемая по ' \
-                         f'расчету теплового баланса </p>'
-                    s += f'<p>t<sub>в</sub> = {self.t_int} °С - нормативная температура внутреннего воздуха;</p>'
-                    s += f'<p>t<sub>н</sub> = {self.t_ot} °С - нормативная температура наружного воздуха, ' \
-                         f'принимаемая равной температуре отопительного периода.</p>'
-                    s += f'<p>Температура воздуха внутри подвального пространства t<sub>н</sub><sup>*</sup>, ' \
-                         f'определяется из уравнения теплового баланса в соответствии с разделом 11.1 ' \
-                         f'СП 345.1325800.2017 «Здания жилые и общественные. Правила проектирования ' \
-                         f'тепловой защиты» </p>'
-                    s += '<p align="center"><img src="formuls/formula_tn.jpg"></p>'
-                    s += '<p>В формуле значения с индексом «+» соответствуют ограждающими конструкциям, ' \
-                         'расположенным между помещением, для которого рассчитывается температура воздуха, ' \
-                         'и внутренними помещениями здания, имеющими температуру t<sub>в</sub>. В формуле значения с ' \
-                         'индексом «-» соответствуют ограждающими конструкциям, расположенным между помещением, ' \
-                         'для которого рассчитывается температура воздуха, и наружным воздухом, ' \
-                         'имеющим температуру t<sub>н</sub>. </p>'
-                    s += '<p>Согласно геометрическим показателям ограждений подвала, определены сопротивления ' \
-                         'теплопередаче R и площади А (площади определены по внутренней поверхности ограждающих ' \
-                         'конструкций) отдельных видов ограждений отраженные в таблицах. </p>'
-                    text.insertHtml(s)
-                    s = """<style type="text/css">
-                           TABLE {
-                            border-collapse: collapse;
-                           }
-                           TD, TH {
-                            padding: 3px;
-                            border: 1px solid black;
-                           }
-                          </style>
-                       <table border="1">
-                       <caption>Таблица. Конструкции, находящиеся между подвалом и 
-                       внутренними помещениями</caption>
-                       <tr>
-                        <th>Название конструкции</th>
-                        <th>A, м²</th>
-                        <th>R<sub>o</sub>,м²·ºС/Вт</th>
-                       </tr>"""
-                    s_plus = ''
-                    s_minus = ''
-                    for elem in self.constructions:
-                        if elem.purpose == 'Внутреняя подвала':
-                            s += f"""<tr><td>{elem.get_construction_name()}</td><td>{elem.area}</td>
-                            <td>{elem.r_pr}</td></tr>"""
-                            if len(s_plus) == 0:
-                                s_plus += f'{elem.area}/{elem.r_pr}'
+                            if len(basement["plus"]) == 0:
+                                basement["plus"] += f'{elem.area}/{elem.r_pr}'
                             else:
-                                s_plus += f' + {elem.area}/{elem.r_pr}'
-                    s += """</table>"""
-                    s += """<table border="1">
-                       <caption>Таблица. Конструкции, находящиеся между подвалом и 
-                       наружной средой</caption>
-                       <tr>
-                        <th>Название конструкции</th>
-                        <th>A, м²</th>
-                        <th>R<sub>o</sub>,м²·ºС/Вт</th>
-                       </tr>"""
-                    for elem in self.constructions:
+                                basement["plus"] += f' + {elem.area}/{elem.r_pr}'
                         if elem.purpose == 'Наружная подвала':
-                            s += f"""<tr><td>{elem.get_construction_name()}</td><td>{elem.area}</td>
-                            <td>{elem.r_pr}</td></tr>"""
-                            if len(s_minus) == 0:
-                                s_minus += f'{elem.area}/{elem.r_pr}'
+                            if len(basement["minus"]) == 0:
+                                basement["minus"] += f'{elem.area}/{elem.r_pr}'
                             else:
-                                s_minus += f' + {elem.area}/{elem.r_pr}'
-                    s += '</table>'
-                    s += '<p>Расчет температуры воздуха подвала при расчетных температурных условиях по формуле</p>'
-                    s += f'<p align="center">t<sub>н</sub><sup>*</sup> = ({self.t_int}·({s_plus}) + ({self.t_ot})· ' \
-                         f'({s_minus})/({s_plus} + {s_minus}) = {elem_basement.t_ext} ºС.</p>'
-                    s += f'<p>Нормируемое значение сопротивления теплопередаче перекрытия определяется в ' \
-                         f'соответствие с пунктом 5.2 СП 50.13330.2012</p>'
-                    s += f'<p align="center"><i>R<sub>о</sub><sup>тр</sup> = n·R<sub>о</sub><sup>тр</sup></i> = ' \
-                         f'{elem_basement.n_coef}·{con["Rtr"]} = {elem_basement.r_tr} м²·ºС/Вт</p>'
-                    s += f'<p>Таким образом, приведенное сопротивление теплопередаче перекрытия подвала ' \
-                         f'должно быть не менее {elem_basement.r_tr} м²·ºС/Вт. </p>'
-                    s += f'<p></p>'
-                    text.insertHtml(s)
-
-            if key in ['Двери', 'Ворота']:
-                s = f'<h3 align="center">{key}</h3>'
-                s += f'<p>Нормируемое сопротивление {name_con} определяется в соответствии с пунктом 5.2 по формуле</p>'
-                s += f'<p align="center">R<sub>o</sub><sup>норм</sup> = 0,6·R<sub>o</sub><sup>норм</sup> = ' \
-                     f'0,6·{con["R_sten"]} = {con["Rtr"]} м²·°С/Вт.</p>'
-                s += f'<p>где R<sub>o</sub><sup>норм</sup> = {con["R_sten"]} м²·°С/Вт - нормируемое сопротивление ' \
-                     'теплопередачи определенное по формуле 5.4 СП 50.13330.2012</p>'
-                s += f'<p align="center">R<sub>o</sub><sup>норм</sup> = (t<sub>в</sub> - t<sub>н</sub>)/' \
-                     f'(Δt<sup>н</sup>·α<sub>в</sub>)) = ({self.t_int} - ({self.t_nhp}))/ ({con["delta_t"]}' \
-                     f'·{con["alfa_int"]}) = {con["R_sten"]} м²·°С/Вт,</p>'
-                s += f'<p>где t<sub>в</sub> = {self.t_int} °С - температура внутреннего воздуха;</p>'
-                s += f'<p>t<sub>н</sub> = {self.t_nhp} °С - температура наружного воздуха при наиболее холодной ' \
-                     'пятидневки обеспеченностью 0,92 по СП 131.13330.2012;</p>'
-                s += '<p></p>'
-                text.insertHtml(s)
-
-        # Вставка расчета нормативной удельной теплозащитной характеристики
-        s = '<p></p>'
-        s += '<h2 align="center">Нормативная удельная теплозащитная характеристика</h2>'
-        s += '<p></p>'
-        if self.v_heat > 960:
-            s += '<p>Для зданий с отапливаемым объемом больше 960 м³ нормируемое значение удельной теплозащитной '
-            s += 'характеристики здания определяется по формуле 5.5 СП 50.13330.2012</p>'
-            s += '<p align="center">k<sub>об</sub><sup>тр</sup> = (0,16 + 10/√V<sub>от</sub>)/(0,00013·ГСОП + 0,61)</p>'
-            s += f'<p align="center">k<sub>об</sub><sup>тр</sup> = (0,16 + 10/√{self.v_heat})/(0,00013 · {self.gsop} ' \
-                 f'+ 0,61) = {self.k_ob_tr} Вт/(м³∙°С).</p>'
-
-        else:
-            s += "<p>Для зданий с отапливаемым объемом меньше или равно 960 м³ нормируемое значение удельной "
-            s += "теплозащитной характеристики здания определяется по формуле 5.5 СП 50.13330.2012.</p>"
-            s += '<p align="center">k<sub>об</sub><sup>тр</sup> = (4,74/(0,00013·ГСОП + 0,61)·1/³√V<sub>от</sub></p>'
-            s += f'<p align="center">k<sub>об</sub><sup>тр</sup> = (4,74/(0,00013 · {self.gsop} + ' \
-                 f'0,61)·1/³√{self.v_heat} = {self.k_ob_tr} Вт/(м³∙°С).</p>'
+                                basement["minus"] += f' + {elem.area}/{elem.r_pr}'
+        k_ob_tr_min = 0.0
         try:
             k_ob_tr_min = round(8.5 / (self.gsop ** 0.5), 2)
         except ZeroDivisionError:
             k_ob_tr_min = 0.0
-        s += '<p>Нормируемое значение удельной теплозащитной характеристики здания также определяемое по формуле 5.6</p>'
-        s += f'<p align="center">k<sub>об</sub><sup>тр</sup> = 8,5/√ГСОП = 8,5/√{self.gsop} = {k_ob_tr_min} ' \
-             f'Вт/(м³∙°С).</p>'
-        znak = '>' if self.k_ob_tr >= k_ob_tr_min else '<'
-        form = '5.5' if self.k_ob_tr >= k_ob_tr_min else '5.6'
-        s += f'<p>Так как {self.k_ob_tr} {znak} {k_ob_tr_min}, следовательно окончательное значение нормируемой ' \
-             f'удельной теплозащитной'
-        s += f'характеристики принимаем рассчитанной по формуле {form}, то есть равное {self.k_ob_tr} Вт/(м³∙°С).</p>'
-        text.insertHtml(s)
+        file_loader = FileSystemLoader('templates')
+        env = Environment(loader=file_loader)
+        tm = env.get_template('norm.html')
+        msg = tm.render(norm=self, other_name=other_name, attic=attic, basement=basement, k_tr=k_ob_tr_min)
+        text.setHtml(msg)
 
     def get_text_spec(self) -> str:
         """Генерация текстового результата расчета"""
@@ -1080,431 +836,127 @@ class Building:
                 elem_nod.setData(elem)
                 tree.appendRow(elem_nod)
 
-    def get_text_spec_html(self, text: object):
-        """Генерация текстового результата расчета"""
-        s = """<style type="text/css">
-           TABLE {
-            border-collapse: collapse; /* Убираем двойные линии между ячейками */
-           }
-           TD, TH {
-            padding: 3px; /* Поля вокруг содержимого таблицы */
-            border: 1px solid black; /* Параметры рамки */
-           }
-          </style>"""
-        s += f"""<h3>Удельная теплозащитная характеристика здания</h3>
-        <p>Расчет удельной теплозащитной характеристики здания производится в соответствии с приложением Ж СП 50.133300.2012 [1] по формуле Ж.1 [1]</p>
-        <p align="center"><img src="formuls/formula_k_ob.jpg"></p>
-        <p>где V<sub>от</sub> = {self.v_heat} м³ – отапливаемый объем здания;</p>
-        <p>А<sub>ф,i</sub> – площадь соответствующего фрагмента теплозащитной оболочки здания;</p>
-        <p>R<sub>о,j</sub><sup>пр</sup> – приведенное сопротивление теплопередачи фрагмента теплозащитной оболочки здания;</p>
-        <p>n<sub>i,j</sub> – коэффициент, учитывающий отличие внутренней или наружной температуры у конструкции от 
-        принятых в расчете ГСОП, определяется по формуле 5.3 [1];</p>
-        <p align="center"><img src="formuls/formula_n.jpg"></p>
-        <p>t<sub>в</sub>, t<sub>от</sub> – температура внутреннего воздуха и температура наружного воздуха отопительного периода;</p>
-        <p>t<sub>в</sub><sup>*</sup>, t<sub>от</sub><sup>*</sup> - средняя температура внутреннего и наружного воздуха помещения.</p>
-
-        <table border="1">
-           <caption>Таблица. Характеристики ограждающих конструкций здания</caption>
-           <tr>
-            <th>Название конструкции</th>
-            <th>t<sub>в</sub>, °С</th>
-            <th>t<sub>н</sub>, °С</th>
-            <th>n</th>
-            <th>A, м²</th>
-            <th>R<sub>o</sub>,м²·ºС/Вт</th>
-            <th>n·A/R<sub>o</sub></th>
-            <th>%</th>
-           </tr>"""
+    def get_spec_html(self, text: object):
+        """Генерация расчета удельной теплотехнической характеристики"""
+        # Подготовка дополнительных данных
+        constr = []
         sum_a = 0.0
         for con in self.constructions:
             if con.purpose in ['Внутреняя подвала', 'Внутреняя чердака', 'Ограждающая']:
+                elem = dict()
                 pr = 0.0
                 sum_a += con.area
                 try:
                     pr = round(con.nAR / self.sum_nAR * 100, 2)
                 except ZeroDivisionError:
                     pr = 0
-                s += f"""<tr><td>{con.get_construction_name()}</td><td>{self.t_int}</td><td>{round(con.t_ext, 2)}</td>
-                <td>{round(con.n_coef, 2)}</td><td>{round(con.area, 2)}</td><td>{con.r_pr}</td>
-                <td>{round(con.nAR, 2)}</td><td>{pr}</td></tr>"""
-        s += f"""<tr><td><b>Итого:</td><td></td><td></td><td></td><td><b>{round(sum_a, 2)}</td><td></td>
-                        <td><b>{self.sum_nAR}</td><td><b>100</td></tr>"""
-        s += """</table>"""
-        s += """<p>Удельная теплозащитная характеристика здания равна</p>"""
-        s += f'<p align="center">k<sub>об</sub> = 1/{self.v_heat}·{self.sum_nAR} = {self.k_ob} Вт/(м³∙°С).</p>'
-        znak = 'больше' if self.k_ob > self.k_ob_tr else 'меньше'
-        s += f'<p>Так как расчетная удельная теплозащитная характеристика равная {self.k_ob} Вт/(м³∙°С), {znak} '
-        znak = 'не' if self.k_ob > self.k_ob_tr else ''
-        s += f'нормируемой величины, равной {self.k_ob_tr} Вт/(м³∙°С), то требование показателя б) пункта 5.1 '
-        s += f'СП 50.133300.2012 {znak} <b>выполняется</b>.</p>'
-        text.insertHtml(s)
+                elem["name"] = con.get_construction_name()
+                elem["t_int"] = self.t_int
+                elem["t_ext"] = round(con.t_ext, 2)
+                elem["n_coef"] = round(con.n_coef, 2)
+                elem["area"] = round(con.area, 2)
+                elem["r_pr"] = con.r_pr
+                elem["nAR"] = round(con.nAR, 2)
+                elem["pr"] = pr
+                constr.append(elem)
+        sum_a = round(sum_a, 2)
+        # Вывод в html-формате
+        file_loader = FileSystemLoader('templates')
+        env = Environment(loader=file_loader)
+        tm = env.get_template('udeln.html')
+        msg = tm.render(udeln=self, constr=constr, sum_a=sum_a)
+        text.setHtml(msg)
 
-    def get_text_calulation_html(self, text: object):
-        """Генерация текстового результата расчета удельного расхода"""
-        s = '<h2 align="center">Расчет удельной характеристики расхода тепловой энергии на отопление и вентиляцию</h2>'
-        s += "<p>Расчетная удельная характеристика расхода тепловой энергии на отопление и вентиляцию здания " \
-             "определяется по формуле Г.1 СП 50.13330.2012</p>"
-        s += '<p align="center"><i>q<sub>от</sub><sup>р</sup> = k<sub>об</sub> + k<sub>вент</sub> - β<sub>КПИ</sub>' \
-             '(k<sub>быт</sub> + k<sub>рад</sub>)</i></p>'
-        s += f'<p align="center">q<sub>от</sub><sup>р</sup> = {self.k_ob} + {self.k_vent} - {self.beta_kpi}' \
-             f'({self.k_bit} + {self.k_rad}) = {self.q_ot} Вт/(м³∙°С)</p>'
-        s += f"<p>где <i>k<sub>об</sub></i> = {self.k_ob} Вт/(м³∙°С) - удельная теплозащитная характеристика здания, " \
-             f"определяется в соответствии с приложением Ж СП 50.13330.2012;</p>"
-        s += f"<p><i>k<sub>вент</sub></i> = {self.k_vent} Вт/(м³∙°С) - удельная вентиляционная характеристика " \
-             f"здания, определяемая в соответствии с пунктом Г.2 приложения Г СП 50.13330.2012;</p>"
-        s += f"<p><i>k<sub>быт</sub></i> = {self.k_bit} Вт/(м³∙°С) - удельная характеристика бытовых " \
-             f"тепловыделений здания, определяемая в соответствии с пунктом Г.5 приложения Г СП 50.13330.2012;</p>"
-        s += f"<p><i>k<sub>рад</sub></i> = {self.k_rad} Вт/(м³∙°С) - удельная характеристика теплопоступлений в здание " \
-             f"от солнечной радиации, определяемая в соответствии с пунктом Г.6 приложения Г СП 50.13330.2012.</p>"
-        s += f"<p><i>β<sub>КПИ</sub></i> = {self.beta_kpi} - коэффициент полезного использования теплопоступлений, " \
-             f"определяемый по формуле Г.1а приложения Г СП 50.13330.2012</p>"
-        s += f'<p align="center"><i>β<sub>КПИ</sub> = К<sub>рег</sub>/(1 + 0,5∙n<sub>в</sub>)</i> = ' \
-             f'{self.coef_regular}/(1 + 0,5∙{self.n_v}) = {self.beta_kpi}</p>'
-        s += f"<p>здесь <i>К<sub>рег</sub></i> = {self.coef_regular} - коэффициент эффективности регулирования " \
-             f"подачи теплоты в системах отопления ({self.regular}), определяемое по пункту Г.1 приложения " \
-             f"Г СП 50.13330.2012;</p>"
-        s += f"<p><i>n<sub>в</sub></i> = {self.n_v} ч<sup>-1</sup> - средняя кратность воздухообмена здания за " \
-             f"отопительный период, определяемая по формуле Г.4 приложения Г СП 50.13330.2012</p>"
-        s += f'<p align="center"><i>n<sub>в</sub> = [(L<sub>вент</sub>∙n<sub>вент</sub>)/168 + ' \
-             f'(G<sub>инф</sub>∙n<sub>инф</sub>)/(168∙ρ<sub>в</sub><sup>вент</sup>)]/' \
-             f'(β<sub>v</sub>∙V<sub>от</sub>)</i></p>'
-        s += f'<p align="center"><i>n<sub>в</sub></i> = [({self.L_vent} ∙ {self.n_vent})/168 + ({self.G_inf} ∙ ' \
-             f'{self.n_inf})/(168 ∙ {self.p_vent})]/(0,85 ∙ {self.v_heat}) = {self.n_v} ч<sup>-1</sup></p>'
+    def get_calсulation_html(self, text: object):
+        """Генерация результата расчета энергетического паспорта"""
+        # Подготовка данных
+        data = dict()
         try:
-            h_floor = round(self.v_heat / self.area_all, 1)
+            data["h_floor"] = round(self.v_heat / self.area_all, 1)
         except ZeroDivisionError:
-            h_floor = 0
+            data["h_floor"] = 0
+        data["a_min"] = 0
         if self.typ in ["Жилое", "Общежитие"]:
             try:
-                a_min = self.area_calc / self.tenants
+                data["a_min"] = self.area_calc / self.tenants
             except ZeroDivisionError:
-                a_min = 0.0
-            if a_min < 20:
-                s += f"<p>где <i>L<sub>вент</sub></i> = 3∙А<sub>ж</sub> = 3∙{self.area_live} = {self.L_vent} м³/ч - " \
-                     f"количество приточного воздуха в здание при неорганизованном притоке и расчетной заселенностью " \
-                     f"менее 20 м² общей площади на человека, определяемая по пункту Г.3 приложения Г СП 50.13330.2012;</p>"
-            else:
-                if 30 * self.tenants > self.L_vent:
-                    s += f"<p>где <i>L<sub>вент</sub></i> = 30∙m = 3∙{self.tenants} = {self.L_vent} м³/ч - " \
-                         f"количество приточного воздуха в здание при неорганизованном притоке и расчетной заселенностью " \
-                         f"более 20 м² общей площади на человека, определяемая по пункту Г.3 приложения Г СП 50.13330.2012;</p>"
-                    s += f"<p><i>m</i> = {self.tenants} чел - количество жителей;</p>"
-                else:
-                    s += f"<p>где <i>L<sub>вент</sub></i> = 0,35∙h<sub>эт</sub>∙А<sub>об</sub> = " \
-                         f"0,35∙{h_floor}∙{self.area_calc} = {self.L_vent} м³/ч - количество приточного воздуха " \
-                         f"в здание при неорганизованном притоке и расчетной заселенностью более 20 м² общей площади " \
-                         f"на человека, определяемая по пункту Г.3 приложения Г СП 50.13330.2012;</p>"
-                    s += f"<p><i>А<sub>об</sub></i> = {self.area_calc} м² - общая площадь квартир;</p>"
-        else:
-            s += f"<p>где <i>L<sub>вент</sub></i> = {self.L_vent} м³/ч - " \
-                 f"количество приточного воздуха в здание при работе механической вентиляции;</p>"
-        s += f"<p><i>n<sub>вент</sub></i> = 168 ч - число часов работы вентиляции в течение недели;</p>"
-        s += f"<p><i>n<sub>инф</sub></i> = 168 ч - число часов инфильтрации в течение недели;</p>"
-        s += f"<p><i>β<sub>v</sub></i> = 0,85 - коэффициент снижения объема воздуха в здании, " \
-             f"учитывающий наличие внутренних ограждающих конструкций;</p>"
-        s += f"<p><i>V<sub>от</sub></i> = {self.v_heat} м³ - отапливаемый объем здания;</p>"
-        s += f"<p><i>G<sub>инф</sub></i> = {self.G_inf} кг/ч - количество инфильтрующегося воздуха в здание " \
-             f"через ограждающие конструкции, определяемое согласно Г.4 СП 50.13330.2012;</p>"
-        if self.typ in ["Жилое", "Общежитие"]:
-            if self.floors <= 3:
-                s += f'<p align="center"><i>G<sub>инф</sub> = 0,3 ∙ 0,85 ∙ V<sub>ЛЛУ</sub></i> = 0,3 ∙ 0,85 ∙' \
-                     f' {self.v_llu} = {self.G_inf} кг/ч</p>'
-            elif 4 <= self.floors <= 9:
-                s += f'<p align="center"><i>G<sub>инф</sub> = 0,45 ∙ 0,85 ∙ V<sub>ЛЛУ</sub></i> = 0,3 ∙ 0,85 ∙' \
-                     f' {self.v_llu} = {self.G_inf} кг/ч</p>'
-            else:
-                s += f'<p align="center"><i>G<sub>инф</sub> = 0,6 ∙ 0,85 ∙ V<sub>ЛЛУ</sub></i> = 0,3 ∙ 0,85 ∙' \
-                     f' {self.v_llu} = {self.G_inf} кг/ч</p>'
-        else:
-            if self.floors <= 3:
-                s += f'<p align="center"><i>G<sub>инф</sub> = 0,1 ∙ 0,85 ∙ V<sub>от</sub></i> = 0,3 ∙ 0,85 ∙' \
-                     f' {self.v_heat} = {self.G_inf} кг/ч</p>'
-            elif 4 <= self.floors <= 9:
-                s += f'<p align="center"><i>G<sub>инф</sub> = 0,15 ∙ 0,85 ∙ V<sub>от</sub></i> = 0,3 ∙ 0,85 ∙' \
-                     f' {self.v_heat} = {self.G_inf} кг/ч</p>'
-            else:
-                s += f'<p align="center"><i>G<sub>инф</sub> = 0,2 ∙ 0,85 ∙ V<sub>от</sub></i> = 0,3 ∙ 0,85 ∙' \
-                     f' {self.v_heat} = {self.G_inf} кг/ч</p>'
-        s += f"<p><i>ρ<sub>в</sub><sup>вент</sup></i> = {self.p_vent} кг/м³ - средняя плотность приточного воздуха " \
-             f"за отопительный период определяемая по формуле Г.3 приложения Г СП 50.13330.2012</p>"
-        s += f'<p align="center"><i>ρ<sub>в</sub><sup>вент</sup> = 353/[273 + t<sub>от</sub>] = ' \
-             f'353/[273 + {self.t_ot}] = {self.p_vent} кг/м³</p>'
-        # удельная вентиляционная характеристика
-        s += "<p>Удельная вентиляционная характеристика здания определяется по формуле Г.2 приложения " \
-             "Г СП 50.13330.2012</p>"
-        s += '<p align="center"><i>k<sub>вент</sub> = 0,28с(L<sub>вент</sub>∙ρ<sub>в</sub><sup>вент</sup>∙' \
-             f'n<sub>вент</sub>∙(1-k<sub>эф</sub>) + G<sub>инф</sub>∙n<sub>инф</sub>)/(168∙V<sub>от</sub>)</i></p>'
-        s += f'<p align="center"><i>k<sub>вент</sub></i> = 0,28∙1({self.L_vent}∙{self.p_vent}∙{self.n_vent}(1 - 0) + ' \
-             f'{self.G_inf}∙{self.n_inf})/(168∙{self.v_heat}) = {self.k_vent} Вт/(м³∙°С)</p>'
-        s += "<p>где с - удельная теплоемкость воздуха, равная 1 кДж/(кг·°С)</p>"
-        # удельная бытовая характеристика
-        if self.typ in ["Жилое", "Общежитие"]:
-            s += "<p>Удельная характеристика бытовых тепловыделений жилого здания определяется по формуле Г.6 " \
-                 "приложения Г СП 50.13330.2012</p>"
-            s += '<p align="center"><i>k<sub>быт</sub> = (q<sub>быт</sub>∙А<sub>ж</sub>)/[V<sub>от</sub>' \
-                 '(t<sub>в</sub> - t<sub>от</sub>)]</i></p>'
-            s += f'<p align="center"><i>k<sub>быт</sub></i> = ({self.q_bit}∙{self.area_live})/[{self.v_heat}' \
-                 f'({self.t_int} - ({self.t_ot}))] = {self.k_bit} Вт/(м³∙°С)</p>'
-            s += f"<p>где q<sub>быт</sub> = {self.q_bit} - величина бытовых тепловыделений на 1 м² площади " \
-                 f"жилых помещений c расчетной заселенностью "
+                data["a_min"] = 0.0
             try:
-                a_ras = round(self.area_calc / self.tenants, 1)
+                data["a_ras"] = round(self.area_calc / self.tenants, 1)
             except ZeroDivisionError:
-                a_ras = 0.0
-            s += f'{a_ras} м² на человека.</p>'
-            s += f"<p>где <i>V<sub>от</sub></i> = {self.v_heat} м³ - отапливаемый объем здания;</p>"
-            s += f"<p><i>А<sub>ж</sub></i> = {self.area_live} м² - жилая площадь квартир;</p>"
-            s += f"<p><i>t<sub>в</sub></i> = {self.t_int} °С - температура внутреннего воздуха;</p>"
-            s += f"<p><i>t<sub>от</sub></i> = {self.t_ot} °С - средняя температура наружного воздуха в " \
-                 f"отопительный период;</p>"
-        else:
-            # расчет для нежилых зданий
-            s += "<p>Удельная характеристика бытовых тепловыделений нежилого здания определяется по формуле Г.6а " \
-                 "приложения Г СП 50.13330.2012</p>"
-            s += '<p align="center"><i>k<sub>быт</sub> = (q<sub>быт</sub>∙А<sub>р</sub>)/[V<sub>от</sub>' \
-                 '(t<sub>в</sub> - t<sub>от</sub>)]</i></p>'
-            s += f'<p align="center"><i>k<sub>быт</sub></i> = ({self.q_bit}∙{self.area_calc})/[{self.v_heat}' \
-                 f'({self.t_int} - ({self.t_ot}))] = {self.k_bit} Вт/(м³∙°С)</p>'
-            s += f"<p>где <i>А<sub>р</sub></i> = {self.area_calc} м² - расчетная площадь здания;</p>"
+                data["a_ras"] = 0.0
+        # Вывод в html-формате
+        file_loader = FileSystemLoader('templates')
+        env = Environment(loader=file_loader)
+        tm = env.get_template('calculation.html')
+        msg = tm.render(calc=self, data=data)
+        text.setHtml(msg)
 
-        # удельная радиационная характеристика
-        s += "<p>Удельная характеристика теплопоступлений в здание от солнечной радиации определяется по формуле Г.7 " \
-             "приложения Г СП 50.13330.2012</p>"
-        s += '<p align="center"><i>k<sub>рад</sub> = (11,6∙Q<sub>рад</sub><sup>год</sup>)/(V<sub>от</sub>∙ГСОП)</i></p>'
-        s += f'<p align="center"><i>k<sub>рад</sub></i> = (11,6∙{self.Q_solar})/[{self.v_heat} ∙ {self.gsop}) =' \
-             f' {self.k_rad} Вт/(м³∙°С)</p>'
-        s += f"<p>где <i>Q<sub>рад</sub><sup>год</sup></i> = {self.Q_solar} МДж/год - теплопоступления через окна и " \
-             f"фонари от солнечной радиации в течение отопительного периода для четырех фасадов зданий, " \
-             f"ориентированных по четырем направлениям определяемые по методике раздела 10 СП 345.1325800.2017;</p>"
-
-        # удельный расход тепловой энергии
-        s += "<p>Удельный расход тепловой энергии на отопление и вентиляцию здания за отопительный период " \
-             "определяется по формуле Г.9 и Г.9а приложения Г СП 50.13330.2012</p>"
-        s += f'<p align="center"><i>q = 0,024∙ГСОП∙q<sub>от</sub><sup>р</sup></i> = 0,024∙{self.gsop}∙{self.q_ot} = ' \
-             f'{round(0.024 * self.gsop * self.q_ot, 2)} кВт·ч/(м³·год).</p>'
-        s += f'<p align="center"><i>q = 0,024∙ГСОП∙q<sub>от</sub><sup>р</sup>∙h</i> = 0,024∙{self.gsop}∙{self.q_ot}∙' \
-             f'{h_floor} = {round(0.024 * self.gsop * self.q_ot * h_floor, 2)} кВт·ч/(м²·год).</p>'
-        s += f"<p>где <i>h</i> = {h_floor} м - средняя высота этажа здания;</p>"
-        s += "<p>Расход тепловой энергии на отопление и вентиляцию здания за отопительный период " \
-             "определяется по формуле Г.10 приложения Г СП 50.13330.2012</p>"
-        s += f'<p align="center"><i>Q<sub>от</sub><sup>год</sup> = 0,024∙ГСОП∙V<sub>от</sub>∙' \
-             f'q<sub>от</sub><sup>р</sup></i> = 0,024∙{self.gsop}∙{self.v_heat}∙{self.q_ot} = ' \
-             f'{round(0.024 * self.gsop * self.q_ot * self.v_heat, 2)} кВт·ч/год.</p>'
-        s += "<p>Общие теплопотери здания за отопительный период " \
-             "определяется по формуле Г.11 приложения Г СП 50.13330.2012</p>"
-        s += f'<p align="center"><i>Q<sub>общ</sub><sup>год</sup> = 0,024∙ГСОП∙V<sub>от</sub>(k<sub>об</sub> - ' \
-             f'k<sub>вент</sub>)</i> = 0,024∙{self.gsop}∙{self.v_heat}∙({self.k_ob} + {self.k_vent}) = ' \
-             f'{round(0.024 * self.gsop * self.v_heat * (self.k_ob + self.k_vent), 2)} кВт·ч/год.</p>'
-
-        # вывод нормативной удельной характеристики
-        s += f'<p>Нормируемая удельная характеристика расхода тепловой энергии на отопление и вентиляцию здания ' \
-             f'определяется по таблице 14 СП 50.13330.2012 для типа здания - {self.typ.lower()}, и этажности ' \
-             f'здания - {self.floors}, составляет q<sub>от</sub><sup>тр</sup> = {self.udeln} Вт/(м³∙°С) с учетом ' \
-             f'требования по снижению на 20% с 1 июля 2018 г. в соответствии с Приказом Министерства строительства ' \
-             f'и жилищно-коммунального хозяйства РФ от 17 ноября 2017 г. N 1550/пр "Об утверждении Требований ' \
-             f'энергетической эффективности зданий, строений, сооружений" </p>'
-        # вывод класса энергоэффективности
-        s += f'<p>Величина отклонения расчетного (фактического) значения удельной характеристики расхода ' \
-             f'тепловой энергии на отопление и вентиляцию здания от нормируемого составляет {self.otklon} %.</p>'
-        s += f'<p>В соответствии с таблицей 15 СП 50.13330.2012 для здания определен класс энергосбережения -' \
-             f' {self.class_energ[0]} ({self.class_energ[1]}).</p>'
-        text.insertHtml(s)
-
-    def get_text_pasport_html(self, text: object):
+    def get_pasport_html(self, text: object):
         """Генерация табличного представления энергетического паспорта"""
-        s = """<style type="text/css">
-           TABLE {
-            border-collapse: collapse;
-           }
-           TD, TH {
-            padding: 3px;
-            border: 1px solid black;
-           }
-           table tr td{
-           text-align: left;
-           }
-            table tr td+td{
-           text-align: center;
-           }
-          </style>"""
-        # вывод общей информации
-        s += '<h2 align="center">1 Общая информация</h2>'
-        s += f"""<table border="1">"""
-        s += f"""<tr><td>Дата заполнения (число, месяц, год)</td>  <td></td></tr>"""
-        s += f"""<tr><td>Адрес здания</td>  <td></td></tr>"""
-        s += f"""<tr><td>Разработчик проекта</td>  <td></td></tr>"""
-        s += f"""<tr><td>Адрес и телефон разработчика</td>  <td></td></tr>"""
-        s += f"""<tr><td>Шифр проекта</td>  <td></td></tr>"""
-        s += f"""<tr><td>Назначение здания, серия</td>  <td></td></tr>"""
-        s += f"""<tr><td>Этажность, количество секций</td>  <td>{self.floors}</td></tr>"""
-        s += f"""<tr><td>Количество квартир</td>  <td></td></tr>"""
-        s += f"""<tr><td>Расчетное количество жителей или служащих</td>  <td></td>{self.tenants}</tr>"""
-        s += f"""<tr><td>Размещение в застройке</td>  <td></td></tr>"""
-        s += f"""<tr><td>Конструктивное решение</td>  <td></td></tr>"""
-        s += """</table>"""
-
-        # вывод расчетных условий
-        s += '<h2 align="center">2 Расчетные условия</h2>'
-        s += f"""<table border="1">
-           <tr>
-            <th>Наименование расчетных параметров</th>
-            <th>Обозначение параметра</th>
-            <th>Единица измерения</th>
-            <th>Расчетное значение</th>
-           </tr>"""
-        s += f"""<tr><td>1 Расчетная температура наружного воздуха для проектирования теплозащиты</td>
-        <td>t<sub>н</sub></td>  <td>°С</td>  <td>{self.t_nhp}</td></tr>"""
-        s += f"""<tr><td>2 Средняя температура наружного воздуха за отопительный период</td>
-        <td>t<sub>от</sub></td>  <td>°С</td>  <td>{self.t_ot}</td></tr>"""
-        s += f"""<tr><td>3 Продолжительность отопительного периода</td>
-        <td>z<sub>от</sub></td>  <td>сут/год</td>  <td>{self.z_ot}</td></tr>"""
-        s += f"""<tr><td>4 Градусо-сутки отопительного периода</td>
-        <td>ГСОП</td>  <td>°С·сут/год</td>  <td>{self.gsop}</td></tr>"""
-        s += f"""<tr><td>5 Расчетная температура внутреннего воздуха для проектирования теплозащиты</td>
-        <td>t<sub>в</sub></td>  <td>°С</td>  <td>{self.t_int}</td></tr>"""
-        has_attic = False
-        elem_attic = None
+        # Подготовка данных для вывода
+        attic = dict()
+        attic["has"] = False
         for elem in self.constructions:
             if elem.purpose == 'Внутреняя чердака':
-                has_attic = True
-                elem_attic = elem
-        if has_attic == True:
-            s += f"""<tr><td>6 Расчетная температура чердака</td>
-            <td>t<sub>черд</sub></td>  <td>°С</td>  <td>{elem_attic.t_ext}</td></tr>"""
-        else:
-            s += f"""<tr><td>6 Расчетная температура чердака</td>
-            <td>t<sub>черд</sub></td>  <td>°С</td>  <td> - </td></tr>"""
-        has_basement = False
-        elem_basement = None
+                attic["has"] = True
+                attic["t_ext"] = elem.t_ext
+        basement = dict()
+        basement["has"] = False
         for elem in self.constructions:
             if elem.purpose == 'Внутреняя подвала':
-                has_basement = True
-                elem_basement = elem
-        if has_basement == True:
-            s += f"""<tr><td>7 Расчетная температура техподполья</td>
-                <td>t<sub>подп</sub></td>  <td>°С</td>  <td>{elem_basement.t_ext}</td></tr>"""
-        else:
-            s += f"""<tr><td>7 Расчетная температура техподполья</td>
-                <td>t<sub>подп</sub></td>  <td>°С</td>  <td> - </td></tr>"""
-        s += """</table>"""
-
-        # вывод показателей геометрических
-        s += '<h2 align="center">3 Показатели геометрические</h2>'
-        s += f"""<table border="1">
-           <tr>
-            <th>Показатель</th>
-            <th>Обозначение и единица измерения</th>
-            <th>Расчетное проектное значение</th>
-            <th>Фактическое значение</th>
-           </tr>"""
-        s += f"""<tr><td>8 Сумма площадей этажей здания</td>
-        <td>А<sub>от</sub>, м²</td>  <td>{self.area_all}</td>  <td>  </td></tr>"""
-        s += f"""<tr><td>9 Площадь жилых помещений</td>
-        <td>А<sub>ж</sub>, м²</td>  <td>{self.area_live}</td>  <td>  </td></tr>"""
-        s += f"""<tr><td>10 Расчетная площадь (общественных зданий)</td>
-        <td>А<sub>р</sub>, м²</td>  <td>{self.area_calc}</td>  <td>  </td></tr>"""
-        s += f"""<tr><td>11 Отапливаемый объем</td>
-        <td>V<sub>от</sub>, м³</td>  <td>{self.v_heat}</td>  <td>  </td></tr>"""
-        area_fasad = 0.0
-        area_okon = 0.0
-        area_vitr = 0.0
-        area_fonar = 0.0
-        area_door = 0.0
-        area_ogr = 0.0
-        area_wall = 0.0
-        area_pokr = 0.0
-        area_attic = 0.0
-        area_warm_attic = 0.0
-        area_basement = 0.0
-        area_proezd = 0.0
-        area_ground = 0.0
+                basement["has"] = True
+                basement["t_ext"] = elem.t_ext
+        # Подготовка площадей конструкций
+        area = dict()
+        area["area_fasad"] = 0.0
+        area["area_okon"] = 0.0
+        area["area_vitr"] = 0.0
+        area["area_fonar"] = 0.0
+        area["area_door"] = 0.0
+        area["area_ogr"] = 0.0
+        area["area_wall"] = 0.0
+        area["area_pokr"] = 0.0
+        area["area_attic"] = 0.0
+        area["area_warm_attic"] = 0.0
+        area["area_basement"] = 0.0
+        area["area_proezd"] = 0.0
+        area["area_ground"] = 0.0
         for elem in self.constructions:
             if elem.typ in ['Наружная стена', 'Окна', 'Витражи', 'Фонари', 'Двери', 'Ворота']:
-                area_fasad += elem.area
+                area["area_fasad"] += elem.area
                 if elem.typ == 'Окна':
-                    area_okon += elem.area
+                    area["area_okon"] += elem.area
                 if elem.typ == 'Витражи':
-                    area_vitr += elem.area
+                    area["area_vitr"] += elem.area
                 if elem.typ == 'Фонари':
-                    area_fonar += elem.area
+                    area["area_fonar"] += elem.area
                 if elem.typ in ['Двери', 'Ворота']:
-                    area_door += elem.area
+                    area["area_door"] += elem.area
             if elem.purpose in ['Ограждающая', 'Внутреняя подвала', 'Внутреняя чердака']:
-                area_ogr += elem.area
+                area["area_ogr"] += elem.area
             if elem.typ == 'Наружная стена' and elem.purpose == 'Ограждающая':
-                area_wall += elem.area
+                area["area_wall"] += elem.area
             if elem.typ == 'Покрытие':
-                area_pokr += elem.area
+                area["area_pokr"] += elem.area
             if elem.typ == 'Чердачное перекрытие' and elem.purpose == 'Ограждающая':
-                area_attic += elem.area
+                area["area_attic"] += elem.area
             if elem.typ == 'Чердачное перекрытие' and elem.purpose == 'Внутреняя чердака':
-                area_warm_attic += elem.area
+                area["area_warm_attic"] += elem.area
             if elem.typ == 'Перекрытие над холодным подвалом':
-                area_basement += elem.area
+                area["area_basement"] += elem.area
             if elem.typ == 'Перекрытие над проездом':
-                area_proezd += elem.area
+                area["area_proezd"] += elem.area
             if elem.typ == 'Конструкция в контакте с грунтом':
-                area_ground += elem.area
+                area["area_ground"] += elem.area
         try:
-            coef_ostekl = round((area_okon + area_vitr + area_fonar) / area_fasad, 2)
-            compact = round(area_ogr / self.v_heat, 2)
+            area["coef_ostekl"] = round((area["area_okon"] + area["area_vitr"] + area["area_fonar"]) /
+                                        area["area_fasad"], 2)
+            area["compact"] = round(area["area_ogr"] / self.v_heat, 2)
         except ZeroDivisionError:
-            coef_ostekl = 0
-            compact = 0
-        s += f"""<tr><td>12 Коэффициент остекленности фасада здания</td>
-        <td>f</td>  <td>{coef_ostekl}</td>  <td>  </td></tr>"""
-        s += f"""<tr><td>13 Показатель компактности здания</td>
-        <td>К<sub>комп</sub></td>  <td>{compact}</td>  <td>  </td></tr>"""
-        s += f"""<tr><td>14 Общая площадь наружных ограждающих конструкций здания,</td>
-        <td>А<sub>н</sub><sup>сум</sup>, м²</td>  <td>{round(area_ogr, 2)}</td>  <td>  </td></tr>"""
-        s += f"""<tr><td>в том числе:</td>
-        <td>  </td>  <td>  </td>  <td>  </td></tr>"""
-        s += f"""<tr><td>    фасадов</td>
-        <td>А<sub>фас</sub>, м²</td>  <td>{round(area_fasad, 2)}</td>  <td>  </td></tr>"""
-        s += f"""<tr><td>    стен (раздельно по типу конструкции)</td>
-        <td>А<sub>ст</sub>, м²</td>  <td>{round(area_wall, 2)}</td>  <td>  </td></tr>"""
-        i = 0
-        for elem in self.constructions:
-            if elem.typ == 'Наружная стена' and elem.purpose == 'Ограждающая':
-                i += 1
-                s += f"""<tr><td>    {elem.get_construction_name().lower()}</td>
-                <td>А<sub>ст{i}</sub>, м²</td>  <td>{round(elem.area, 2)}</td>  <td>  </td></tr>"""
-        s += f"""<tr><td>окон и балконных дверей</td>
-        <td>А<sub>ок.1</sub>, м²</td>  <td>{round(area_okon, 2)}</td>  <td>  </td></tr>"""
-        s += f"""<tr><td>витражей</td>
-        <td>А<sub>ок.2</sub>, м²</td>  <td>{round(area_vitr, 2)}</td>  <td>  </td></tr>"""
-        s += f"""<tr><td>фонарей</td>
-        <td>А<sub>ок.3</sub>, м²</td>  <td>{round(area_fonar, 2)}</td>  <td>  </td></tr>"""
-        s += f"""<tr><td>окон лестнично-лифтовых узлов</td>
-        <td>А<sub>ок.4</sub>, м²</td>  <td> - </td>  <td>  </td></tr>"""
-        s += f"""<tr><td>балконных дверей наружных переходов</td>
-        <td>А<sub>дв</sub>, м²</td>  <td> - </td>  <td>  </td></tr>"""
-        s += f"""<tr><td>входных дверей и ворот (раздельно)</td>
-        <td>А<sub>дв</sub>, м²</td>  <td>{round(area_door, 2)}</td>  <td>  </td></tr>"""
-        s += f"""<tr><td>покрытий (совмещенных)</td>
-        <td>А<sub>покр</sub>, м²</td>  <td>{round(area_pokr, 2)}</td>  <td>  </td></tr>"""
-        s += f"""<tr><td>чердачных перекрытий</td>
-        <td>А<sub>черд</sub>, м²</td>  <td>{round(area_attic, 2)}</td>  <td>  </td></tr>"""
-        s += f"""<tr><td>перекрытий "теплых" чердаков (эквивалентная)</td>
-        <td>А<sub>черд.т</sub>, м²</td>  <td>{round(area_warm_attic, 2)}</td>  <td>  </td></tr>"""
-        s += f"""<tr><td>перекрытий над техническими подпольями или над неотапливаемыми подвалами</td>
-        <td>А<sub>цок1</sub>, м²</td>  <td>{round(area_basement, 2)}</td>  <td>  </td></tr>"""
-        s += f"""<tr><td>перекрытий над проездами или под эркерами</td>
-        <td>А<sub>цок2</sub>, м²</td>  <td>{round(area_proezd, 2)}</td>  <td>  </td></tr>"""
-        s += f"""<tr><td>стен в земле и пола по грунту</td>
-        <td>А<sub>цок3</sub>, м²</td>  <td>{round(area_ground, 2)}</td>  <td>  </td></tr>"""
-        s += """</table>"""
-
-        # вывод показателей теплотехнических
-        s += '<h2 align="center">4 Показатели теплотехнические</h2>'
-        s += f"""<table border="1">
-           <tr>
-            <th>Показатель</th>
-            <th>Обозначение и единица измерения</th>
-            <th>Нормируемое значение</th>
-            <th>Расчетное проектное значение</th>
-            <th>Фактическое значение</th>
-           </tr>"""
+            area["coef_ostekl"] = 0
+            area["compact"] = 0
+        # Подготовка сопротивлений теплопередаче конструкций
         r_con = dict()
         for elem in self.constructions:
             if elem.purpose in ['Внутреняя подвала', 'Внутреняя чердака', 'Ограждающая']:
@@ -1518,7 +970,6 @@ class Building:
                         r_con[elem.typ][2] += elem.area / elem.r_pr
                     except ZeroDivisionError:
                         pass
-
                 else:
                     r_con[elem.typ] = [0.0, 0.0, 0.0]
                     r_con[elem.typ][0] = elem.area
@@ -1534,15 +985,11 @@ class Building:
             try:
                 r_con[key][1] = round(r_con[key][0] / r_con[key][1], 2)
             except ZeroDivisionError:
-                pass
+                r_con[key][1] = 0
             try:
                 r_con[key][2] = round(r_con[key][0] / r_con[key][2], 2)
             except ZeroDivisionError:
-                pass
-
-        s += f"""<tr><td>15 Приведенное сопротивление теплопередаче наружных ограждений, в том числе:</td>
-        <td>R<sub>o</sub><sup>пр</sup>, м²·°С/Вт</td>  <td>{round(self.r_pr_norm, 2)}</td>  
-        <td>{round(self.r_pr, 2)}</td>   <td>  </td></tr>"""
+                r_con[key][2] = 0
         index = ['R<sub>o,ст</sub><sup>пр</sup>', 'R<sub>o,ок1</sub><sup>пр</sup>', 'R<sub>o,ок2</sub><sup>пр</sup>',
                  'R<sub>o,ок3</sub><sup>пр</sup>', 'R<sub>o,ок4</sub><sup>пр</sup>', 'R<sub>o,дв</sub><sup>пр</sup>',
                  'R<sub>o,дв</sub><sup>пр</sup>', 'R<sub>o,покр</sub><sup>пр</sup>', 'R<sub>o,черд</sub><sup>пр</sup>',
@@ -1553,159 +1000,22 @@ class Building:
                 'перекрытий "теплых" чердаков',
                 'перекрытий над техническими подпольями или над неотапливаемыми подвалами',
                 'перекрытий над проездами или под эркерами', 'стен в земле и пола по грунту']
-        i = 0
-        for key in ['Наружная стена', 'Окна', 'Витражи', 'Фонари', 'Окон ЛЛУ', 'Дверей наружных переходов',
-                    'Двери', 'Покрытие', 'Чердачное перекрытие', 'Чердачное перекрытие',
-                    'Перекрытие над холодным подвалом', 'Перекрытие над проездом', 'Конструкция в контакте с грунтом']:
-            s += f"""<tr><td>{name[i]}</td>
-            <td>{index[i]}</td>  <td>{r_con[key][1] if key in r_con else '-'}</td>  
-            <td>{r_con[key][2] if key in r_con else '-'}</td>   <td>  </td></tr>"""
-            i += 1
-        s += """</table>"""
-
-        # вывод показателей вспомогательных
-        s += '<h2 align="center">5 Показатели вспомогательные</h2>'
-        s += f"""<table border="1">
-           <tr>
-            <th>Показатель</th>
-            <th>Обозначение показателя и единица измерения</th>
-            <th>Нормируемое значение показателя</th>
-            <th>Расчетное проектное значение показателя</th>
-           </tr>"""
-        s += f"""<tr><td>16 Общий коэффициент теплопередачи здания</td>
-        <td>K<sub>общ</sub>, Вт/м²·°С</td>  <td>{round(1 / self.r_pr_norm, 3) if self.r_pr_norm > 0 else '-'}</td>  
-        <td>{round(1 / self.r_pr, 3) if self.r_pr > 0 else '-'}</td> </tr>"""
-        s += f"""<tr><td>17 Средняя кратность воздухообмена здания за отопительный период при удельной 
-        норме воздухообмена</td>
-        <td>n<sub>в</sub>, ч<sup>-1</sup></td>  <td> - </td>  
-        <td>{self.n_v}</td> </tr>"""
-        s += f"""<tr><td>18 Удельные бытовые тепловыделения в здании</td>
-        <td>q<sub>быт</sub>, Вт/м²</td>  <td> - </td>  
-        <td>{self.q_bit}</td> </tr>"""
-        s += f"""<tr><td>19 Тарифная цена тепловой энергии для проектируемого здания</td>
-        <td>q<sub>быт</sub>, Вт/м²</td>  <td> - </td>  
-        <td> - </td> </tr>"""
-        s += """</table>"""
-
-        # вывод удельных характеристик
-        s += '<h2 align="center">6 Удельные характеристики</h2>'
-        s += f"""<table border="1">
-           <tr>
-            <th>Показатель</th>
-            <th>Обозначение показателя и единица измерения</th>
-            <th>Нормируемое значение показателя</th>
-            <th>Расчетное проектное значение показателя</th>
-           </tr>"""
-        s += f"""<tr><td>20 Удельная теплозащитная характеристика здания</td>
-        <td>k<sub>об</sub>, Вт/м³·°С</td>  <td>{self.k_ob_tr}</td>  
-        <td>{self.k_ob}</td> </tr>"""
-        s += f"""<tr><td>21 Удельная вентиляционная характеристика здания</td>
-        <td>k<sub>вент</sub>, Вт/м³·°С</td>  <td> - </td>  
-        <td>{self.k_vent}</td> </tr>"""
-        s += f"""<tr><td>22 Удельная характеристика бытовых тепловыделений здания</td>
-        <td>k<sub>быт</sub>, Вт/м³·°С</td>  <td> - </td>  
-        <td>{self.k_bit}</td> </tr>"""
-        s += f"""<tr><td>23 Удельная характеристика теплопоступлений в здание от солнечной радиации</td>
-        <td>k<sub>рад</sub>, Вт/м³·°С</td>  <td> - </td>  
-        <td>{self.k_rad}</td> </tr>"""
-        s += """</table>"""
-
-        # вывод коэффициентов
-        s += '<h2 align="center">7 Коэффициенты</h2>'
-        s += f"""<table border="1">
-           <tr>
-            <th>Показатель</th>
-            <th>Обозначение показателя и единица измерения</th>
-            <th>Значение показателя</th>
-           </tr>"""
-        s += f"""<tr><td>26 Коэффициент эффективности рекуператора</td>
-        <td>k<sub>эф</sub></td>  <td> - </td> </tr>"""
-        s += """</table>"""
-
-        # вывод показателей
-        s += '<h2 align="center">8 Комплексные показатели расхода тепловой энергии</h2>'
-        s += f"""<table border="1">
-           <tr>
-            <th>Показатель</th>
-            <th>Обозначение показателя и единица измерения</th>
-            <th>Значение показателя</th>
-           </tr>"""
-        s += f"""<tr><td>29 Расчетная удельная характеристика расхода тепловой энергии на отопление и вентиляцию 
-        здания за отопительный период</td>
-        <td>q<sub>от</sub><sup>р</sup>, Вт/м³·°С</td>  <td>{self.q_ot}</td> </tr>"""
-        s += f"""<tr><td>30 Нормируемая удельная характеристика расхода тепловой энергии на отопление и вентиляцию 
-        здания за отопительный период</td>
-        <td>q<sub>от</sub><sup>тр</sup>, Вт/м³·°С</td>  <td>{self.udeln}</td> </tr>"""
-        s += f"""<tr><td>31 Класс энергосбережения</td>
-        <td>  </td>  <td>{self.class_energ[0]}</td> </tr>"""
-        s += f"""<tr><td>32 Соответствует ли проект здания нормативному требованию по теплозащите</td>
-        <td>  </td>  <td>Соответствует</td> </tr>"""
-        s += """</table>"""
-
-        # вывод удельных характеристик
-        s += '<h2 align="center">9 Энергетические нагрузки здания</h2>'
-        s += f"""<table border="1">
-           <tr>
-            <th>Показатель</th>
-            <th>Обозначение</th>
-            <th>Единица измерений</th>
-            <th>Значение показателя</th>
-           </tr>"""
         try:
             h_floor = self.v_heat / self.area_all
         except ZeroDivisionError:
             h_floor = 0.0
-        s += f"""<tr><td>33 Удельный расход тепловой энергии на отопление и вентиляцию здания за отопительный период</td>
-        <td> q </td>  <td><p align="center">кВт·ч/(м³·год)</p>  <p align="center">кВт·ч/(м²·год)</p></td>  
-        <td><p align="center">{round(0.024 * self.gsop * self.q_ot, 2)}</p>  
-        <p align="center">{round(0.024 * self.gsop * self.q_ot * h_floor, 2)}</p>
-        </td> </tr>"""
-        s += f"""<tr><td>34 Расход тепловой энергии на отопление и вентиляцию здания за отопительный период</td>
-        <td> Q<sub>от</sub><sup>год</sup> </td>  <td>кВт·ч/год</td>  
-        <td> {round(0.024 * self.gsop * self.q_ot * self.v_heat, 2)} </td> </tr>"""
-        s += f"""<tr><td>35 Общие теплопотери здания за отопительный период</td>
-        <td> Q<sub>общ</sub><sup>год</sup> </td>  <td>кВт·ч/год</td>  
-        <td> {round(0.024 * self.gsop * self.v_heat * (self.k_ob + self.k_vent), 2)} </td> </tr>"""
-        s += """</table>"""
-        text.insertHtml(s)
 
-    def get_text_class_html(self, text: object):
-        """Генерация табличного представления расчета класса энергосбережения"""
-        s = """<style type="text/css">
-           TABLE {
-            border-collapse: collapse;
-           }
-           TD, TH {
-            padding: 3px;
-            border: 1px solid black;
-           }
-           table tr td{
-           text-align: left;
-           }
-            table tr td+td{
-           text-align: center;
-           }
-          </style>"""
-        # вывод общей информации
-        s += '<h4 align="center">Показатели расчета</h4>'
-        s += f"""<table border="1">
-           <tr>
-            <th>Наименование показателя</th>
-            <th>Значение показателя</th>
-           </tr>"""
-        s += f"""<tr><td>Базовый уровень удельного годового расхода, кВт·ч/м²</td> <td> {self.q_class} </td> </tr>"""
-        s += f"""<tr><td>Заселенность, м²/чел</td> <td> 17 </td> </tr>"""
-        s += f"""<tr><td>Расчетное количество жителей, чел </td> <td> {self.calc_tenants} </td> </tr>"""
-        s += f"""<tr><td>Нормативный воздухообмен на одного человека, м³/ч </td> <td> 30 </td> </tr>"""
-        s += f"""<tr><td>Количество воздуха для обеспечения воздухообмена, м³/ч</td> <td> {self.volume_air} </td> </tr>"""
-        s += f"""<tr><td>Средняя кратность воздухообмена, ч<sup>-1</sup></td> <td> {self.air_cratn} </td> </tr>"""
-        s += f"""<tr><td>Удельная вентиляционная характеристика здания, Вт/(м³·°С)</td> <td> {self.k_vent2} </td> </tr>"""
-        s += f"""<tr><td>Удельные бытовые теплопоступления, Вт/м²</td> <td> 17 </td> </tr>"""
-        s += f"""<tr><td>Удельная характеристика бытовых теплопоступления, Вт/(м³·°С)</td> <td> {self.k_bit2} </td> </tr>"""
-        s += f"""<tr><td>Расчетная удельная характеристика расхода тепловой энергии, 
-              пересчитанная по Приказу от 6 июня 2016 г. N 399/пр, Вт/(м³·°С)</td> <td> {self.q_ot2} </td> </tr>"""
-        s += f"""<tr><td>Удельный расход тепловой энергии на отопление и вентиляцию здания за 
-                отопительный период, кВт·ч/м²</td> <td> {self.q_ras} </td> </tr>"""
+        # Вывод в html-формате
+        file_loader = FileSystemLoader('templates')
+        env = Environment(loader=file_loader)
+        tm = env.get_template('passport.html')
+        msg = tm.render(passp=self, attic=attic, basement=basement, area=area, r_con=r_con, index=index, name=name,
+                        h_floor=h_floor)
+        text.setHtml(msg)
+
+    def get_class_html(self, text: object):
+        """Генерация расчета класса энергетической эффективности"""
+        # Подготовка данных
         try:
             otklon = round((self.q_ras - self.q_class) / self.q_class * 100, 2)
         except ZeroDivisionError:
@@ -1728,10 +1038,10 @@ class Building:
             class_energ = ["F", "Низкий"]
         else:
             class_energ = ["G", "Очень низкий"]
-        s += f"""<tr><td>Величина отклонения значения фактического удельного годового расхода энергетических ресурсов 
-                 от базового уровня, %</td> <td> {otklon} </td> </tr>"""
-        s += f"""<tr><td>Класс энергетической эффективности по Приказу от 6 июня 2016 г. N 399/пр</td> 
-        <td> <p align='center'>{class_energ[0]}</p> <p align='center'>{class_energ[1]}</p> </td> </tr>"""
-        s += """</table>"""
 
-        text.insertHtml(s)
+        # Вывод в html-формате
+        file_loader = FileSystemLoader('templates')
+        env = Environment(loader=file_loader)
+        tm = env.get_template('class_energo.html')
+        msg = tm.render(energo=self, cls=class_energ, otklon=otklon)
+        text.setHtml(msg)

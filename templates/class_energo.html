@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Расчет класса энергосбережения</title>
+</head>
+<body>
+
+<style>
+    TABLE {
+        border-collapse:collapse;
+        width:100%;
+    }
+    TD, TH {
+        padding:3px;
+        border:1px solid black;
+        font-size:14px;
+    }
+    table tr td {
+        text-align: left;
+    }
+    TR.itogo {
+        font-weight:bold;
+    }
+    CAPTION {
+        text-align:center;
+        font-size:14px;
+        margin-top:20px;
+    }
+    DIV.h1 {
+        text-align:center;
+        font-size:16px;
+        font-weight:bold;
+        margin-bottom:15px;
+    }
+    DIV.h2 {
+        text-align:center;
+        font-size:14px;
+        font-weight:bold;
+        margin-bottom:10px;
+    }
+    DIV.formula {
+        text-align:center;
+        font-size:14px;
+        margin-top:10px;
+        margin-bottom:10px;
+    }
+
+    DIV.txt {
+        text-align:justify;
+        font-size:14px;
+    }
+</style>
+
+<div class="h1">Расчет класса энергетической эффективности жилого здания</div>
+{% if energo.typ in ["Жилое", "Общежитие"] %}
+    <table border="1">
+        <tr>
+            <th>Наименование показателя</th>
+            <th>Значение показателя</th>
+        </tr>
+        <tr><td>Базовый уровень удельного годового расхода, кВт·ч/м²</td> <td> {{energo.q_class}} </td> </tr>
+        <tr><td>Заселенность, м²/чел</td> <td> 17 </td> </tr>
+        <tr><td>Расчетное количество жителей, чел </td> <td> {{energo.calc_tenants}} </td> </tr>
+        <tr><td>Нормативный воздухообмен на одного человека, м³/ч </td> <td> 30 </td> </tr>
+        <tr><td>Количество воздуха для обеспечения воздухообмена, м³/ч</td> <td> {{energo.volume_air}} </td> </tr>
+        <tr><td>Средняя кратность воздухообмена, ч<sup>-1</sup></td> <td> {{energo.air_cratn}} </td> </tr>
+        <tr><td>Удельная вентиляционная характеристика здания, Вт/(м³·°С)</td> <td> {{energo.k_vent2}} </td> </tr>
+        <tr><td>Удельные бытовые теплопоступления, Вт/м²</td> <td> 17 </td> </tr>
+        <tr><td>Удельная характеристика бытовых теплопоступления, Вт/(м³·°С)</td> <td> {{energo.k_bit2}} </td> </tr>
+        <tr><td>Расчетная удельная характеристика расхода тепловой энергии, пересчитанная по Приказу от
+            6 июня 2016 г. N 399/пр, Вт/(м³·°С)</td> <td> {{energo.q_ot2}} </td> </tr>
+        <tr><td>Удельный расход тепловой энергии на отопление и вентиляцию здания за отопительный период, кВт·ч/м²</td> <td> {{energo.q_ras}} </td> </tr>
+
+        <tr><td>Величина отклонения значения фактического удельного годового расхода энергетических ресурсов от базового уровня, %</td> <td> {{otklon}} </td> </tr>
+        <tr><td>Класс энергетической эффективности по Приказу от 6 июня 2016 г. N 399/пр</td>
+            <td> <p align='center'>{{cls[0]}}</p> <p align='center'>{{cls[1]}}</p> </td> </tr>
+    </table>
+{% else %}
+    <div class="txt">Для нежилых типов зданий класс энергетической эффективности на текущий момент не нормирован</div>>
+{% endif %}
+</body>
+</html>

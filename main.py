@@ -1,6 +1,7 @@
 import json
 import sys
 from PyQt5.QtWidgets import QTableWidgetItem, QFileDialog, QMessageBox, QTreeView, QComboBox
+from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtCore import QSize
 from PyQt5.Qt import QStandardItemModel, QStandardItem
@@ -324,12 +325,12 @@ class MyWindow(QtWidgets.QMainWindow, QtWidgets.QWidget, gui_form.Ui_MainWindow)
 
     def out_norm(self):
         """Вывод расчета нормативных требований"""
-        self.text_norm.clear()
+        # self.text_norm.clear()
         self.build.get_norm_html(self.text_norm)
         # перенос в начало текста
-        cursor = self.text_norm.textCursor()
-        cursor.movePosition(QTextCursor.Start)
-        self.text_norm.setTextCursor(cursor)
+        # cursor = self.text_norm.textCursor()
+        # cursor.movePosition(QTextCursor.Start)
+        # self.text_norm.setTextCursor(cursor)
 
     def save_json(self):
         """Сохранение данных в формате json"""
