@@ -1,13 +1,13 @@
 from layer import Layer
 
 
-class MultiLayer:
+class Construction:
     def __init__(self):
         self.__layers = []
         self.__ratio_inner_surface = 8.7
         self.__ratio_outer_surface = 23
-        self.__ratio_r = 1
-        self.__resistance = 0
+        self.__ratio_r = 1.0
+        self.__resistance = 0.0
         self.__name = ""
         self.__heat_construction = True
 

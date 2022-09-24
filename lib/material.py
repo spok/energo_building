@@ -101,3 +101,16 @@ class Material:
         self.__ratio_lamb = new_data.get("ratio_lamb", 0.0)
         self.__ratio_sa = new_data.get("ratio_sa", 0.0)
         self.__ratio_sb = new_data.get("ratio_sb", 0.0)
+
+    def ratio_lam(self, cur_environment):
+        if type(cur_environment) == str and cur_environment in "AB":
+            if cur_environment == "A":
+                if self.__ratio_lama == 0 and self.__ratio_lamb != 0:
+                    return self.__ratio_lamb
+                else:
+                    return self.__ratio_lama
+            else:
+                if self.__ratio_lamb == 0 and self.__ratio_lama != 0:
+                    return self.__ratio_lama
+                else:
+                    return self.__ratio_lamb

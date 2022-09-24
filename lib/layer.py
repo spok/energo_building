@@ -3,18 +3,32 @@ from material import Material
 
 class Layer:
     def __init__(self):
-        self.__number = 0
+        self.__number = 1
         self.__thickness = 0
         self.__ratio_lam = 0
         self.__resistance = 0
-        self.__environment = "A"
         self.__material = Material()
+        self.__environment = "A"
 
     def calc_resistance(self):
+        """
+        Расчет сопротивляения теплопередаче слоя
+        :return:
+        """
         if self.__ratio_lam != 0:
             self.__resistance = round(self.__thickness / 1000 / self.__ratio_lam, 3)
         else:
             self.__resistance = 0
+
+    @property
+    def material(self):
+        return self.__material
+
+    @material.setter
+    def material(self, new_material: Material):
+        self.__material = new_material
+        self.set_environment(self.__environment)
+        self.calc_resistance()
 
     @property
     def name(self):
@@ -24,12 +38,12 @@ class Layer:
     def resistance(self):
         return self.__resistance
 
-    @property
-    def environment(self):
-        return self.__environment
-
-    @environment.setter
-    def environment(self, new_value):
+    def set_environment(self, new_value: str):
+        """
+        Изменение коэффициента теплопроводности при смене условий эксплуатации
+        :param new_value: Новое значение условия эксплуатации
+        :return: None
+        """
         if type(new_value) == str and new_value in "AB":
             self.__environment = new_value
             if new_value == "A":
@@ -49,9 +63,9 @@ class Layer:
         return self.__number
 
     @number.setter
-    def number(self, new_number):
+    def number(self, new_number: int):
         if type(new_number) == int and new_number > 0:
-            self.__number == new_number
+            self.__number = new_number
 
     @property
     def thickness(self):
@@ -69,18 +83,6 @@ class Layer:
     def ratio_lam(self):
         return self.__ratio_lam
 
-    @ratio_lam.setter
-    def ratio_lam(self, new_ratio_lam: float = 0):
-        if type(new_ratio_lam) in [int, float]:
-            self.__ratio_lam = new_ratio_lam
-        else:
-            raise ValueError("Значение коэффициент должно быть вещественным числом")
-        if self.__environment == "A":
-            self.__material.ratio_lama = new_ratio_lam
-        else:
-            self.__material.ratio_lamb = new_ratio_lam
-        self.calc_resistance()
-
     def get_text_sym(self) -> str:
         """
         Генерация html представления формулы расчета сопротивления теплопередаче
@@ -93,7 +95,7 @@ class Layer:
         Генерация html представления расчета сопротивления теплопередаче
         :return: str
         """
-        return f'{self.__thickness}/{self.__ratio_lam}'
+        return f'{self.__thickness/1000}/{self.__ratio_lam}'
 
     def get_dict_from_data(self):
         """
