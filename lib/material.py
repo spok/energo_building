@@ -7,6 +7,25 @@ class Material:
         self.__ratio_sa = 0.0
         self.__ratio_sb = 0.0
 
+    def __str__(self):
+        return f"{self.name}, плотность {self.density} кг/куб. м"
+
+    def __eq__(self, other):
+        result = True
+        if result and self.__name != other.name:
+            result = False
+        if result and self.__density != other.density:
+            result = False
+        if result and self.__ratio_lama != other.ratio_lama:
+            result = False
+        if result and self.__ratio_lamb != other.ratio_lamb:
+            result = False
+        if result and self.__ratio_sa != other.ratio_sa:
+            result = False
+        if result and self.__ratio_sb != other.ratio_sb:
+            result = False
+        return result
+
     @property
     def name(self):
         return self.__name
@@ -55,7 +74,7 @@ class Material:
     def ratio_sa(self):
         return self.__ratio_sa
 
-    @ratio_lama.setter
+    @ratio_sa.setter
     def ratio_sa(self, new_ratio: float):
         if type(new_ratio) in [int, float]:
             self.__ratio_sa = new_ratio
