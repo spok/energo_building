@@ -6,6 +6,7 @@ class Material:
         self.__ratio_lamb = 0.0
         self.__ratio_sa = 0.0
         self.__ratio_sb = 0.0
+        self.number = 0
 
     def __str__(self):
         return f"{self.name}, плотность {self.density} кг/куб. м"
@@ -36,6 +37,12 @@ class Material:
             self.__name = new_name
         else:
             raise ValueError("Название материала должно иметь строковой тип данных")
+
+    def check_name(self, text: str) -> bool:
+        """Проверка на вхождение текста в название материала"""
+        if text in self.__name.lower():
+            return True
+        return False
 
     @property
     def density(self):
@@ -92,7 +99,11 @@ class Material:
         else:
             raise ValueError("Коэффициент теплоусвоения должен иметь тип данных: целое или вещественное")
 
-    def get_dict_from_data(self):
+    def get_tuple(self) -> tuple:
+        """Возвращает кортеж с параметрами материала"""
+        return self.number, self.__name, self.__density, self.__ratio_lama, self.__ratio_lamb, self.__ratio_sa, self.__ratio_sb
+
+    def get_dict_from_data(self) -> dict:
         """
         Возвращает словарь с данными материала
         :return: dict
@@ -106,7 +117,7 @@ class Material:
         data["ratio_sb"] = self.__ratio_sb
         return data
 
-    def set_data_from_dict(self, new_data: dict = None):
+    def set_from_dict(self, new_data: dict = None):
         """
         Установка параметров материала
         :param new_data: словарь с новыми данными
@@ -133,3 +144,4 @@ class Material:
                     return self.__ratio_lama
                 else:
                     return self.__ratio_lamb
+

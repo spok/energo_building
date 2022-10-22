@@ -1,13 +1,18 @@
 import csv
+import os
 import json
 from lib.material import Material
+from lib.config import *
 
 
 class Materials:
     def __init__(self):
         self.__materials = []
+        self.__current = None
+        self.load_json()
 
-    def len_materials(self):
+    def count_materials(self):
+        """Возвращает количество материалов в списке"""
         return len(self.__materials)
 
     @staticmethod
@@ -27,7 +32,7 @@ class Materials:
             result = 0.0
         return result
 
-    def add_material(self, new_material: tuple, index: int = 0):
+    def add_material(self, new_material: tuple):
         """
         Добавление нового материала в список
         :param new_material: кортеж из данных материалов в строковом формате
@@ -41,12 +46,41 @@ class Materials:
         mat.ratio_lamb = self.to_float(new_material[3])
         mat.ratio_sa = self.to_float(new_material[4])
         mat.ratio_sb = self.to_float(new_material[5])
-        if index >= self.len_materials():
-            self.__materials.append(mat)
+        if self.count_materials() > 0:
+            mat.number = self.__materials[-1].number + 1
         else:
-            self.__materials.insert(index, mat)
+            mat.number = 1
+        self.__materials.append(mat)
 
-    def dublicate_material(self, index: int):
+    def edit_material(self, new_material: tuple, index: int):
+        """
+        Редактирование существующего материала
+        :param new_material: кортеж из данных материалов в строковом формате
+        :param index: позиция редактируемого материала
+        :return: None
+        """
+        for mat in self.__materials:
+            if mat.number == index:
+                break
+        mat.name = new_material[0]
+        mat.density = self.to_float(new_material[1])
+        mat.ratio_lama = self.to_float(new_material[2])
+        mat.ratio_lamb = self.to_float(new_material[3])
+        mat.ratio_sa = self.to_float(new_material[4])
+        mat.ratio_sb = self.to_float(new_material[5])
+
+    def del_material(self, index: int):
+        """
+        Удаление материала из списка
+        :param index: номер материала
+        :return: None
+        """
+        for i, mat in enumerate(self.__materials):
+            if mat.number == index:
+                break
+        del self.__materials[i]
+
+    def copy_material(self, index: int):
         """
         Дублирование существующего материала
         :param index: текущий индекс дублируемого материала
@@ -60,7 +94,7 @@ class Materials:
         mat.ratio_lamb = cur_material.ratio_lamb
         mat.ratio_sa = cur_material.ratio_sa
         mat.ratio_sb = cur_material.ratio_sb
-        if index >= self.len_materials() - 1:
+        if index >= self.count_materials() - 1:
             self.__materials.append(mat)
         else:
             self.__materials.insert(index + 1, mat)
@@ -71,34 +105,38 @@ class Materials:
         :param path: путь к файлу с csv-файла
         :return: None
         """
-        with open(path, encoding='utf-8') as file:
-            rows = list(csv.reader(file, delimiter=";", quoting=csv.QUOTE_NONE))[1:]
-            for elem in rows:
-                if len(elem) > 0:
-                    mat = Material()
-                    mat.name = elem[0]
-                    mat.density = float(elem[1].replace(",", "."))
-                    mat.ratio_lama = float(elem[2].replace(",", "."))
-                    mat.ratio_lamb = float(elem[3].replace(",", "."))
-                    mat.ratio_sa = float(elem[4].replace(",", "."))
-                    mat.ratio_sb = float(elem[3].replace(",", "."))
-                    self.__materials.append(mat)
+        if os.path.exists(path):
+            with open(path, encoding='utf-8') as file:
+                rows = list(csv.reader(file, delimiter=";", quoting=csv.QUOTE_NONE))[1:]
+                for i, elem in enumerate(rows, 1):
+                    if len(elem) > 0:
+                        mat = Material()
+                        mat.name = elem[0]
+                        mat.density = float(elem[1].replace(",", "."))
+                        mat.ratio_lama = float(elem[2].replace(",", "."))
+                        mat.ratio_lamb = float(elem[3].replace(",", "."))
+                        mat.ratio_sa = float(elem[4].replace(",", "."))
+                        mat.ratio_sb = float(elem[3].replace(",", "."))
+                        mat.number = i
+                        self.__materials.append(mat)
 
-    def load_json(self, path: str):
+    def load_json(self):
         """
         Загрузка данных материалов из json-файла
         :param path: путь к файлу
         :return: None
         """
-        with open(path, "r", encoding="utf-8") as f:
-            json_data = json.load(f)
-        self.__materials = []
-        for elem in json_data:
-            mat = Material()
-            mat.set_data_from_dict(elem)
-            self.__materials.append(mat)
+        if os.path.exists(PATH_MATERIALS):
+            with open(PATH_MATERIALS, "r", encoding="utf-8") as f:
+                json_data = json.load(f)
+            self.__materials = []
+            for i, elem in enumerate(json_data, 1):
+                mat = Material()
+                mat.number = i
+                mat.set_from_dict(elem)
+                self.__materials.append(mat)
 
-    def dump_json(self, path: str):
+    def dump_json(self):
         """
         Сохранение данных материалов в json-файл
         :param path: путь к файлу
@@ -107,22 +145,25 @@ class Materials:
         json_data = []
         for elem in self.__materials:
             json_data.append(elem.get_dict_from_data())
-        with open(path, "w", encoding="utf-8") as f:
+        with open(PATH_MATERIALS, "w", encoding="utf-8") as f:
             json.dump(json_data, f, indent=3)
 
-    def filter_materials(self, text: str) -> list:
+    def get_materials(self, text: str=""):
         """
         Фильтрация материалов по наличию текста в названии материала
         :param text: поисковый запрос
         :return: список словарей
         """
-        if len(text) >= 3:
-            filter_material = [x.get_dict_from_data() for x in self.__materials if text in x.name]
-        else:
-            filter_material = [x.get_dict_from_data() for x in self.__materials]
-        return filter_material
+        if self.count_materials() == 0:
+            self.load_json()
+        for x in self.__materials:
+            if len(text) > 2:
+                if x.check_name(text):
+                    yield x.get_tuple()
+            else:
+                yield x.get_tuple()
 
-    def get_by_name(self, name: str, density: float):
+    def get_by_name(self, name: str, density: float) -> Material:
         """
         Возвращает материал из списка по названию и плотности
         :param name: название материала
@@ -141,14 +182,14 @@ class Materials:
             raise ValueError("Параметры запрашиваемого материала не соответствуют требуемым")
         return material
 
-    def get_by_index(self, index: int):
+    def get_by_index(self, index: int) -> Material:
         """
         Возвращает материал по номеру в списке
         :param index: индекс материала
         :return: объект класса Material
         """
         material = None
-        if index < self.len_materials():
+        if index < self.count_materials():
             material = self.__materials[index]
         else:
             raise ValueError("Номер материала указан неверно")

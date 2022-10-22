@@ -25,7 +25,7 @@ class TestMaterai(unittest.TestCase):
     def test_get_dict(self):
         new_dict = {"name": "Кирпичная кладка", "density": 123.5, "ratio_lama": 0.76, "ratio_lamb": 0.81,
                     "ratio_sa": 9.7, "ratio_sb": 10.8}
-        self.mat.set_data_from_dict(new_dict)
+        self.mat.set_from_dict(new_dict)
         self.assertEqual(self.mat.get_dict_from_data(), new_dict)
 
     def test_set_lama(self):
