@@ -184,13 +184,13 @@ class Materials:
 
     def get_by_index(self, index: int) -> Material:
         """
-        Возвращает материал по номеру в списке
+        Возвращает материал по номеру материала
         :param index: индекс материала
         :return: объект класса Material
         """
         material = None
-        if index < self.count_materials():
-            material = self.__materials[index]
-        else:
-            raise ValueError("Номер материала указан неверно")
+        for elem in self.__materials:
+            if index == elem.number:
+                material = elem
+                break
         return material

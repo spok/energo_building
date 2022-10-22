@@ -169,6 +169,7 @@ class AllMaterials(QDialog):
         self.set_table_headers()
         self.table.setSelectionBehavior(self.table.SelectRows)
         self.button_select = QPushButton("Выбрать")
+        self.button_select.clicked.connect(self.accept)
         self.vbox.addWidget(self.table)
         self.vbox.addWidget(self.button_select)
         self.setLayout(self.vbox)
@@ -290,20 +291,37 @@ class AllMaterials(QDialog):
         self.table.setCurrentCell(self.table.rowCount() - 1, 0)
         self.table.setFocus()
 
+    def exec_(self):
+        super(AllMaterials, self).exec_()
+        row = self.table.currentRow()
+        index = int(self.table.verticalHeaderItem(row).text())
+        return self.materials.get_by_index(index)
+
+
+import sys
+from PyQt5.QtWidgets import QMainWindow
+
+
+class MainWindow(QMainWindow):
+    def __init__(self, parent=None):
+        super(MainWindow, self).__init__()
+        materials = Materials()
+        self.dialog = AllMaterials(mat=materials, parent=self)
+        self.dialog.setWindowModality(QtCore.Qt.WindowModal)
+        self.resize(300, 200)
+        button = QPushButton("Открыть новое окно", parent=self)
+        button.resize(200, 40)
+        button.move(50, 50)
+        button.clicked.connect(self.dialog_show)
+
+    def dialog_show(self):
+        value = self.dialog.exec_()
+        if value:
+            print(value)
+
 
 if __name__ == '__main__':
-    import sys
-    from PyQt5.QtWidgets import QMainWindow
-
     app = QApplication(sys.argv)
-    materials = Materials()
-    window = QMainWindow()
-    dialog = AllMaterials(mat=materials, parent=window)
-    dialog.setWindowModality(QtCore.Qt.WindowModal)
-    window.resize(300, 200)
-    button = QPushButton("Открыть новое окно", parent=window)
-    button.resize(200, 40)
-    button.move(50, 50)
-    button.clicked.connect(dialog.show)
+    window = MainWindow()
     window.show()
     sys.exit(app.exec_())
