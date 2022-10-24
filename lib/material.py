@@ -1,4 +1,6 @@
 class Material:
+    environment = "А"
+
     def __init__(self):
         self.__name = ''
         self.__density = 0.0
@@ -132,9 +134,10 @@ class Material:
         self.__ratio_sa = new_data.get("ratio_sa", 0.0)
         self.__ratio_sb = new_data.get("ratio_sb", 0.0)
 
-    def ratio_lam(self, cur_environment):
-        if type(cur_environment) == str and cur_environment in "AB":
-            if cur_environment == "A":
+    def get_lam(self):
+        """Определение коэффициента в зависимости от условия эксплуатации"""
+        if type(Material.environment) == str and Material.environment in "АВ":
+            if Material.environment == "А":
                 if self.__ratio_lama == 0 and self.__ratio_lamb != 0:
                     return self.__ratio_lamb
                 else:
@@ -144,4 +147,18 @@ class Material:
                     return self.__ratio_lama
                 else:
                     return self.__ratio_lamb
+
+    def get_s(self):
+        """Определение коэффициента в зависимости от условия эксплуатации"""
+        if type(Material.environment) == str and Material.environment in "АВ":
+            if Material.environment == "А":
+                if self.__ratio_sa == 0 and self.__ratio_sb != 0:
+                    return self.__ratio_sb
+                else:
+                    return self.__ratio_sa
+            else:
+                if self.__ratio_sb == 0 and self.__ratio_sa != 0:
+                    return self.__ratio_sa
+                else:
+                    return self.__ratio_sb
 

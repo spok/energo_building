@@ -8,7 +8,7 @@ from lib.config import *
 class Materials:
     def __init__(self):
         self.__materials = []
-        self.__current = None
+        self.__change = False
         self.load_json()
 
     def count_materials(self):
@@ -28,7 +28,7 @@ class Materials:
             text = '0'
         try:
             result = float(text)
-        except ValueError as err:
+        except ValueError:
             result = 0.0
         return result
 
@@ -36,7 +36,6 @@ class Materials:
         """
         Добавление нового материала в список
         :param new_material: кортеж из данных материалов в строковом формате
-        :param index: позиция вставляемого материала
         :return: None
         """
         mat = Material()
@@ -51,6 +50,7 @@ class Materials:
         else:
             mat.number = 1
         self.__materials.append(mat)
+        self.__change = True
 
     def edit_material(self, new_material: tuple, index: int):
         """
@@ -68,6 +68,7 @@ class Materials:
         mat.ratio_lamb = self.to_float(new_material[3])
         mat.ratio_sa = self.to_float(new_material[4])
         mat.ratio_sb = self.to_float(new_material[5])
+        self.__change = True
 
     def del_material(self, index: int):
         """
@@ -79,6 +80,7 @@ class Materials:
             if mat.number == index:
                 break
         del self.__materials[i]
+        self.__change = True
 
     def copy_material(self, index: int):
         """
@@ -98,6 +100,7 @@ class Materials:
             self.__materials.append(mat)
         else:
             self.__materials.insert(index + 1, mat)
+        self.__change = True
 
     def load_csv(self, path: str):
         """
@@ -123,7 +126,6 @@ class Materials:
     def load_json(self):
         """
         Загрузка данных материалов из json-файла
-        :param path: путь к файлу
         :return: None
         """
         if os.path.exists(PATH_MATERIALS):
@@ -139,16 +141,17 @@ class Materials:
     def dump_json(self):
         """
         Сохранение данных материалов в json-файл
-        :param path: путь к файлу
         :return: None
         """
-        json_data = []
-        for elem in self.__materials:
-            json_data.append(elem.get_dict_from_data())
-        with open(PATH_MATERIALS, "w", encoding="utf-8") as f:
-            json.dump(json_data, f, indent=3)
+        if self.__change:
+            json_data = []
+            for elem in self.__materials:
+                json_data.append(elem.get_dict_from_data())
+            with open(PATH_MATERIALS, "w", encoding="utf-8") as f:
+                json.dump(json_data, f, indent=3)
+        self.__change = False
 
-    def get_materials(self, text: str=""):
+    def get_materials(self, text: str = ""):
         """
         Фильтрация материалов по наличию текста в названии материала
         :param text: поисковый запрос

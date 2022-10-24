@@ -47,22 +47,26 @@ class TestMaterai(unittest.TestCase):
     def test_get_lam1(self):
         self.mat.ratio_lama = 0.76
         self.mat.ratio_lamb = 0.81
-        self.assertEqual(self.mat.ratio_lam('A'), 0.76)
+        Material.environment = 'А'
+        self.assertEqual(self.mat.get_lam(), 0.76)
 
     def test_get_lam2(self):
         self.mat.ratio_lama = 0.76
         self.mat.ratio_lamb = 0.81
-        self.assertEqual(self.mat.ratio_lam('B'), 0.81)
+        Material.environment = 'В'
+        self.assertEqual(self.mat.get_lam(), 0.81)
 
     def test_get_lam3(self):
         self.mat.ratio_lama = 0
         self.mat.ratio_lamb = 0.81
-        self.assertEqual(self.mat.ratio_lam('A'), 0.81)
+        Material.environment = 'А'
+        self.assertEqual(self.mat.get_lam(), 0.81)
 
     def test_get_lam4(self):
         self.mat.ratio_lama = 0.76
         self.mat.ratio_lamb = 0
-        self.assertEqual(self.mat.ratio_lam('B'), 0.76)
+        Material.environment = 'В'
+        self.assertEqual(self.mat.get_lam(), 0.76)
 
 
 if __name__ == '__main__':

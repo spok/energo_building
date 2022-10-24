@@ -10,24 +10,26 @@ class TestLayer(unittest.TestCase):
         self.material = Material()
         new_dict = {"name": "Кирпичная кладка", "density": 1800, "ratio_lama": 0.1, "ratio_lamb": 0.2,
                     "ratio_sa": 9.7, "ratio_sb": 10.8}
-        self.material.set_data_from_dict(new_dict)
+        self.material.set_from_dict(new_dict)
         self.layer.material = self.material
-        self.layer.set_environment("A")
 
     def test_null_layer(self):
         self.assertEqual(self.layer.resistance, 1)
 
     def test_set_environment1(self):
-        self.layer.set_environment("A")
+        Material.environment = 'А'
+        self.layer.calc_resistance()
         self.assertEqual(self.layer.ratio_lam, 0.1)
         self.assertEqual(self.layer.resistance, 1)
 
     def test_set_environment2(self):
-        self.layer.set_environment("B")
+        Material.environment = 'В'
+        self.layer.calc_resistance()
         self.assertEqual(self.layer.ratio_lam, 0.2)
         self.assertEqual(self.layer.resistance, 0.5)
 
     def test_set_thickness(self):
+        Material.environment = 'А'
         self.layer.thickness = 200
         self.assertEqual(self.layer.thickness, 200)
         self.assertEqual(self.layer.resistance, 2)
@@ -36,7 +38,7 @@ class TestLayer(unittest.TestCase):
         self.material = Material()
         new_dict = {"name": "Минераловатный утеплитель", "density": 50, "ratio_lama": 0.05, "ratio_lamb": 0.1,
                     "ratio_sa": 9.7, "ratio_sb": 10.8}
-        self.material.set_data_from_dict(new_dict)
+        self.material.set_from_dict(new_dict)
         self.layer.material = self.material
         self.layer.thickness = 150
         self.assertEqual(self.layer.thickness, 150)
@@ -52,7 +54,7 @@ class TestLayer(unittest.TestCase):
         self.assertEqual(self.layer.name, "Кирпичная кладка")
         new_dict = {"name": "Минераловатный утеплитель", "density": 50, "ratio_lama": 0.05, "ratio_lamb": 0.1,
                     "ratio_sa": 9.7, "ratio_sb": 10.8}
-        self.material.set_data_from_dict(new_dict)
+        self.material.set_from_dict(new_dict)
         self.layer.material = self.material
         self.assertEqual(self.layer.name, "Минераловатный утеплитель")
 
@@ -61,5 +63,5 @@ class TestLayer(unittest.TestCase):
                     "material": {"name": "Кирпичная кладка", "density": 123.5,
                                  "ratio_lama": 0.76, "ratio_lamb": 0.81,
                                  "ratio_sa": 9.7, "ratio_sb": 10.8}}
-        self.layer.set_data_from_dict(new_dict)
+        self.layer.set_from_dict(new_dict)
         self.assertEqual(self.layer.get_dict_from_data(), new_dict)

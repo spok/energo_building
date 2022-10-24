@@ -1,64 +1,10 @@
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QHBoxLayout, QPushButton, QDialog, \
-    QLineEdit, QApplication, QLabel, QHeaderView, QGridLayout, QTextEdit, QStyledItemDelegate, QStyleOptionViewItem, QStyle
-from PyQt5 import QtCore, QtGui
+    QLineEdit, QApplication, QLabel, QGridLayout, QTextEdit
+from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import Qt
 from lib.materials import Materials
+from gui.gui_widgets import *
 from lib.config import *
-
-
-class HighlightDelegate(QStyledItemDelegate):
-    def __init__(self, parent=None):
-        super(HighlightDelegate, self).__init__(parent)
-        self._wordwrap = False
-        self.doc = QtGui.QTextDocument(self)
-
-    def paint(self, painter, option, index):
-        painter.save()
-        options = QStyleOptionViewItem(option)
-        self.initStyleOption(options, index)
-        self.doc.setPlainText(options.text)
-
-        if self._wordwrap:
-            self.doc.setTextWidth(options.rect.width())
-        options.text = ""
-
-        style = QApplication.style() if options.widget is None else options.widget.style()
-        style.drawControl(QStyle.CE_ItemViewItem, options, painter)
-
-        if self._wordwrap:
-            painter.translate(options.rect.left(), options.rect.top())
-            clip = QtCore.QRectF(QtCore.QPointF(), QtCore.QSizeF(options.rect.size()))
-            self.doc.drawContents(painter, clip)
-        else:
-            ctx = QtGui.QAbstractTextDocumentLayout.PaintContext()
-            if option.state & QStyle.State_Selected:
-                ctx.palette.setColor(QtGui.QPalette.Text, option.palette.color(
-                    QtGui.QPalette.Active, QtGui.QPalette.HighlightedText))
-            else:
-                ctx.palette.setColor(QtGui.QPalette.Text, option.palette.color(
-                    QtGui.QPalette.Active, QtGui.QPalette.Text))
-            text_rect = style.subElementRect(QStyle.SE_ItemViewItemText, options, None)
-            if index.column() != 0:
-                text_rect.adjust(5, 0, 0, 0)
-            constant = 4
-            margin = (option.rect.height() - options.fontMetrics.height()) // 2
-            margin = margin - constant
-            text_rect.setTop(text_rect.top() + margin)
-            painter.translate(text_rect.topLeft())
-            painter.setClipRect(text_rect.translated(-text_rect.topLeft()))
-            self.doc.documentLayout().draw(painter, ctx)
-
-        painter.restore()
-        s = QtCore.QSize(int(self.doc.idealWidth()), int(self.doc.size().height()))
-        index.model().setData(index, s, QtCore.Qt.SizeHintRole)
-
-    def set_wordwrap(self, on):
-        self._wordwrap = on
-        mode = QtGui.QTextOption.WordWrap if on else QtGui.QTextOption.WrapAtWordBoundaryOrAnywhere
-
-        text_option = QtGui.QTextOption(self.doc.defaultTextOption())
-        text_option.setWrapMode(mode)
-        self.doc.setDefaultTextOption(text_option)
-        self.parent().viewport().update()
 
 
 class AddMaterial(QDialog):
@@ -138,18 +84,18 @@ class AllMaterials(QDialog):
         self.label1 = QLabel("Поиск:")
         self.query = QLineEdit()
         self.button_clear = QPushButton()
-        self.button_clear.setIcon(QtGui.QIcon('icons/close.png'))
+        self.button_clear.setIcon(QIcon('icons/close.png'))
         self.button_clear.setStyleSheet("QPushButton {border : 0; background: transparent}")
         self.button_clear.setMaximumWidth(30)
         self.button_clear.setVisible(False)
         self.button_add = QPushButton("Новый")
-        self.button_add.setIcon(QtGui.QIcon('icons/add.png'))
+        self.button_add.setIcon(QIcon('icons/add.png'))
         self.button_del = QPushButton("Удалить")
-        self.button_del.setIcon(QtGui.QIcon('icons/minus-low.png'))
+        self.button_del.setIcon(QIcon('icons/minus-low.png'))
         self.button_copy = QPushButton("Копия")
-        self.button_copy.setIcon(QtGui.QIcon('icons/copy.png'))
+        self.button_copy.setIcon(QIcon('icons/copy.png'))
         self.button_edit = QPushButton("Редактировать")
-        self.button_edit.setIcon(QtGui.QIcon('icons/edit.png'))
+        self.button_edit.setIcon(QIcon('icons/edit.png'))
         self.hbox.addWidget(self.label1)
         self.hbox.addWidget(self.query)
         self.hbox.addWidget(self.button_clear)
@@ -298,16 +244,16 @@ class AllMaterials(QDialog):
         return self.materials.get_by_index(index)
 
 
+# Для тестирования
 import sys
 from PyQt5.QtWidgets import QMainWindow
 
-
-class MainWindow(QMainWindow):
+class TestWindow(QMainWindow):
     def __init__(self, parent=None):
-        super(MainWindow, self).__init__()
+        super(TestWindow, self).__init__()
         materials = Materials()
         self.dialog = AllMaterials(mat=materials, parent=self)
-        self.dialog.setWindowModality(QtCore.Qt.WindowModal)
+        self.dialog.setWindowModality(Qt.WindowModal)
         self.resize(300, 200)
         button = QPushButton("Открыть новое окно", parent=self)
         button.resize(200, 40)
@@ -322,6 +268,6 @@ class MainWindow(QMainWindow):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    window = MainWindow()
+    window = TestWindow()
     window.show()
     sys.exit(app.exec_())
