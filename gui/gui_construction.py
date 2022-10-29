@@ -1,13 +1,33 @@
-from PyQt5.QtWidgets import QWidget, QFrame, QTabWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QHBoxLayout, \
-    QPushButton, QDialog, QLineEdit, QApplication, QLabel, QGridLayout, QTextEdit, QGroupBox, QRadioButton
-from PyQt5.QtGui import QIcon, QFont
-from PyQt5.QtCore import Qt
-from gui.gui_widgets import *
+from PyQt5.QtWidgets import QFrame, QTabWidget, QGroupBox, QRadioButton
+from PyQt5.QtGui import QFont, QShowEvent
+from PyQt5.QtWebEngineWidgets import QWebEngineView
+from jinja2 import Environment, FileSystemLoader
 from gui.gui_materials import *
 from lib.materials import Materials
 from lib.construction import Construction
-from lib.layer import Layer
 from lib.config import *
+
+
+class FormConstructionHtml(QWidget):
+    def __init__(self, construction: Construction, parent=None):
+        super(FormConstructionHtml, self).__init__(parent)
+        self.construction = construction
+        self.result_text = QWebEngineView()
+        vbox = QVBoxLayout()
+        self.file_loader = FileSystemLoader('templates')
+        self.env = Environment(loader=self.file_loader)
+        self.tm = self.env.get_template('construction.html')
+        vbox.addWidget(self.result_text)
+        self.setLayout(vbox)
+
+    def update_html(self):
+        calc = self.construction.get_html()
+        msg = self.tm.render(data=calc)
+        self.result_text.setHtml(msg)
+
+    def showEvent(self, e: QShowEvent) -> None:
+        self.update_html()
+        QWidget.showEvent(self, e)
 
 
 class FormConstruction(QWidget):
@@ -24,40 +44,35 @@ class FormConstruction(QWidget):
         vbox2.addWidget(label1)
         # Таблица слоев конструкции
         self.table_layer = QTableWidget()
-        self.table_layer.setMinimumHeight(200)
+        self.table_layer.setMinimumHeight(100)
         self.table_layer.setMaximumHeight(800)
         self.table_layer.setColumnCount(6)
         self.table_layer.setHorizontalHeaderLabels(HEADER_CONSTRUCTION)
         self.table_layer.horizontalHeader().setVisible(True)
-        self.table_layer.setColumnWidth(0, 380)
-        self.table_layer.setColumnWidth(1, 60)
-        self.table_layer.setColumnWidth(2, 70)
-        self.table_layer.setColumnWidth(3, 70)
-        self.table_layer.setColumnWidth(4, 70)
-        self.table_layer.setColumnWidth(5, 60)
         self.table_layer.setSelectionBehavior(self.table_layer.SelectRows)
-        self.table_layer.setFocusPolicy(Qt.StrongFocus)
         # Настройка делегата для таблицы
         self._delegate = HighlightDelegate(self.table_layer)
-        self.table_layer.setItemDelegateForColumn(0, self._delegate)
-        self._delegate.set_wordwrap(True)
+        self.table_layer.setItemDelegate(self._delegate)
         vbox2.addWidget(self.table_layer)
         # Итоговая строка под таблицей
         hbox_sum = QHBoxLayout()
-        label_sum = QLabel("Итого")
-        self.set_bold_text(label_sum, 380)
+        hbox_sum.setDirection(1)
+        self.label_sum = QLabel("Итого")
+        self.set_bold_text(self.label_sum, 380)
         self.label_thickness = QLabel("0.0")
         self.set_bold_text(self.label_thickness, 60)
         self.label_r = QLabel("0.0")
         self.set_bold_text(self.label_r, 70)
         self.label_d = QLabel("0.0")
         self.set_bold_text(self.label_d, 60)
-        hbox_sum.addWidget(label_sum)
-        hbox_sum.addWidget(self.label_thickness)
-        hbox_sum.addSpacing(130)
-        hbox_sum.addWidget(self.label_r)
+        self.set_table_size()
+        hbox_sum.addSpacing(40)
         hbox_sum.addWidget(self.label_d)
+        hbox_sum.addWidget(self.label_r)
+        hbox_sum.addSpacing(130)
+        hbox_sum.addWidget(self.label_thickness)
         hbox_sum.addStretch(0)
+        hbox_sum.addWidget(self.label_sum)
         vbox2.addLayout(hbox_sum)
         # Управляющие кнопки к таблице
         hbox_button = QHBoxLayout()
@@ -113,6 +128,11 @@ class FormConstruction(QWidget):
         hbox.addStretch(0)
         vbox2.addLayout(hbox)
         self.frame1.setLayout(vbox2)
+        # Настройка вывода результата расчета
+        vbox3 = QVBoxLayout()
+        self.result = FormConstructionHtml(self.construction)
+        vbox3.addWidget(self.result)
+        self.frame2.setLayout(vbox3)
         # Настройка вкладок
         self.tab = QTabWidget()
         self.tab.addTab(self.frame1, "Ввод данных")
@@ -132,9 +152,23 @@ class FormConstruction(QWidget):
         self.edit_ratio_r.editingFinished.connect(self.change_ratio_r)
         self.update_form()
 
+    def set_table_size(self):
+        """Подстройка размеров элементов таблицы"""
+        width = self.width()
+        self.table_layer.setColumnWidth(1, 60)
+        self.table_layer.setColumnWidth(2, 70)
+        self.table_layer.setColumnWidth(3, 70)
+        self.table_layer.setColumnWidth(4, 70)
+        self.table_layer.setColumnWidth(5, 60)
+        width = width - 2*60 - 3*70 - (self.width() - self.table_layer.width()) - 40
+        scroll = self.table_layer.verticalScrollBar()
+        if scroll.isVisible():
+            width = width - scroll.width()
+        self.table_layer.setColumnWidth(0, width)
+
     def select_row(self):
         """Выделение активной строки таблицы"""
-        self.table_layer.setCurrentCell(self.table_layer.currentRow(), 1)
+        self.table_layer.setCurrentCell(self.table_layer.currentRow(), 0)
         self.table_layer.setFocus()
 
     @staticmethod
@@ -173,6 +207,7 @@ class FormConstruction(QWidget):
             self.construction.add_layer(new_material, cur_row)
             self.update_form()
             self.table_layer.selectRow(cur_row + 1)
+        self.set_table_size()
         self.select_row()
 
     def move_up(self):
@@ -198,6 +233,7 @@ class FormConstruction(QWidget):
         self.select_row()
 
     def change_table(self):
+        """Передача измененных данных из таблицы"""
         cur_row = self.table_layer.currentRow()
         if cur_row > -1:
             new_layer = (self.table_layer.item(cur_row, 0).text(), self.table_layer.item(cur_row, 1).text(),
@@ -213,13 +249,13 @@ class FormConstruction(QWidget):
         self.table_layer.setRowCount(0)
         for i, layer in enumerate(self.construction.get_layers()):
             self.table_layer.setRowCount(i + 1)
-            for j in range(6):
+            for j in range(1, 7):
                 if j < 4:
                     value = str(layer[j])
                 else:
                     value = f"{layer[j]:.3f}"
                 new_item = QTableWidgetItem(value)
-                self.table_layer.setItem(i, j, new_item)
+                self.table_layer.setItem(i, j - 1, new_item)
         self.table_layer.blockSignals(False)
         # Обновление итоговой строки
         self.label_thickness.setText(str(self.construction.thickness))
@@ -242,23 +278,10 @@ class FormConstruction(QWidget):
         self.edit_ratio_r.setText(str(self.construction.ratio_r))
         self.edit_ratio_r.blockSignals(False)
 
+    def resizeEvent(self, e: QResizeEvent) -> None:
+        self.set_table_size()
+        QWidget.resizeEvent(self, e)
 
-# Для тестирования
-import sys
-from PyQt5.QtWidgets import QMainWindow
-
-class TestWindow(QMainWindow):
-    def __init__(self, parent=None):
-        super(TestWindow, self).__init__()
-        self.resize(800, 600)
-        construction = Construction()
-        materials = Materials()
-        tab = FormConstruction(construction, materials)
-        self.setCentralWidget(tab)
-
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    window = TestWindow()
-    window.show()
-    sys.exit(app.exec_())
+    def showEvent(self, e: QShowEvent) -> None:
+        self.set_table_size()
+        QWidget.showEvent(self, e)

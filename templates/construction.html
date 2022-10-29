@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Расчет сопротивления теплопередаче конструкции</title>
+</head>
+<body>
+
+<style>
+    TABLE {
+        border-collapse:collapse;
+        width:100%;
+    }
+    TD, TH {
+        padding:3px;
+        border:1px solid black;
+        font-size:14px;
+    }
+    table tr td {
+        text-align: center;
+    }
+    table tr td+td {
+        text-align: left;
+    }
+    table tr td+td+td {
+        text-align: center;
+    }
+    TR.itogo {
+        font-weight:bold;
+    }
+    CAPTION {
+        text-align:center;
+        font-size:14px;
+        margin-top:20px;
+    }
+    DIV.h1 {
+        text-align:center;
+        font-size:16px;
+        font-weight:bold;
+        margin-bottom:15px;
+    }
+    DIV.h2 {
+        text-align:center;
+        font-size:14px;
+        font-weight:bold;
+        margin-bottom:10px;
+    }
+    DIV.formula {
+        text-align:center;
+        font-size:14px;
+        margin-top:10px;
+        margin-bottom:10px;
+    }
+    DIV.txt {
+        text-align:justify;
+        font-size:14px;
+    }
+</style>
+
+<div class="h1">Расчет сопротивления теплопередаче конструкции</div>
+
+<table border="1">
+    <tr>
+        <th>№ слоя</th>
+        <th>Наименование материала</th>
+        <th><p>Толщина, </p><p>δ, мм</p></th>
+        <th><p>Коэффициент</p><p>теплопроводности</p><p>λ, Вт/(м∙ºС)</p></th>
+    </tr>
+    {% for con in data.layers %}
+    <tr><td>{{ con[0] }}</td> <td>{{ con[1] }}</td> <td>{{ con[2] }}</td> <td>{{ con[3] }}</td></tr>
+    {% endfor %}
+</table>
+
+</body>
+</html>

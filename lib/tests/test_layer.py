@@ -64,4 +64,4 @@ class TestLayer(unittest.TestCase):
                                  "ratio_lama": 0.76, "ratio_lamb": 0.81,
                                  "ratio_sa": 9.7, "ratio_sb": 10.8}}
         self.layer.set_from_dict(new_dict)
-        self.assertEqual(self.layer.get_dict_from_data(), new_dict)
+        self.assertEqual(self.layer.get_dict(), new_dict)

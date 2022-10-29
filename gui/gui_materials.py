@@ -1,7 +1,6 @@
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QHBoxLayout, QPushButton, QDialog, \
-    QLineEdit, QApplication, QLabel, QGridLayout, QTextEdit
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import Qt
+    QLineEdit, QLabel, QGridLayout, QTextEdit, QWidget
+from PyQt5.QtGui import QIcon, QResizeEvent
 from lib.materials import Materials
 from gui.gui_widgets import *
 from lib.config import *
@@ -108,21 +107,16 @@ class AllMaterials(QDialog):
         # Таблица с материалами
         self.table = QTableWidget()
         self.table.setColumnCount(6)
-        self.table.setColumnWidth(0, 300)
-        self.table.setColumnWidth(1, 110)
-        for i in range(2, 6):
-            self.table.setColumnWidth(i, 85)
+        self.set_table_size()
         self.set_table_headers()
         self.table.setSelectionBehavior(self.table.SelectRows)
+        self._delegate = HighlightDelegate(self.table)
+        self.table.setItemDelegate(self._delegate)
         self.button_select = QPushButton("Выбрать")
         self.button_select.clicked.connect(self.accept)
         self.vbox.addWidget(self.table)
         self.vbox.addWidget(self.button_select)
         self.setLayout(self.vbox)
-        # Настройка делегата
-        self._delegate = HighlightDelegate(self.table)
-        self.table.setItemDelegate(self._delegate)
-        self._delegate.set_wordwrap(True)
         # Обработка событий
         self.query.textChanged.connect(self.input_text)
         self.button_clear.clicked.connect(self.clear_text)
@@ -136,12 +130,24 @@ class AllMaterials(QDialog):
             self.table.setFocus()
             self.table.setCurrentCell(0, 0)
 
+    def set_table_size(self):
+        """Подстройка размеров элементов таблицы"""
+        width = self.size().width()
+        for i in range(1, 6):
+            self.table.setColumnWidth(i, 75)
+        width = width - 5*75 - (self.width() - self.table.width()) - 40
+        scroll = self.table.verticalScrollBar()
+        if scroll.isVisible():
+            width = width - scroll.width()
+        self.table.setColumnWidth(0, width)
+
     def set_table_headers(self):
+        """Установка заголовков таблицы"""
         self.table.setHorizontalHeaderLabels(HEADER_MATERIALS)
         self.table.setVerticalHeaderLabels([str(x) for x in self.vertical_headers])
 
     def show_materials(self):
-        self.table.clear()
+        """Вывод материалов в таблице"""
         self.table.setRowCount(0)
         row = 0
         self.vertical_headers = []
@@ -243,31 +249,7 @@ class AllMaterials(QDialog):
         index = int(self.table.verticalHeaderItem(row).text())
         return self.materials.get_by_index(index)
 
+    def resizeEvent(self, e: QResizeEvent) -> None:
+        self.set_table_size()
+        QWidget.resizeEvent(self, e)
 
-# Для тестирования
-import sys
-from PyQt5.QtWidgets import QMainWindow
-
-class TestWindow(QMainWindow):
-    def __init__(self, parent=None):
-        super(TestWindow, self).__init__()
-        materials = Materials()
-        self.dialog = AllMaterials(mat=materials, parent=self)
-        self.dialog.setWindowModality(Qt.WindowModal)
-        self.resize(300, 200)
-        button = QPushButton("Открыть новое окно", parent=self)
-        button.resize(200, 40)
-        button.move(50, 50)
-        button.clicked.connect(self.dialog_show)
-
-    def dialog_show(self):
-        value = self.dialog.exec_()
-        if value:
-            print(value)
-
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    window = TestWindow()
-    window.show()
-    sys.exit(app.exec_())

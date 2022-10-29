@@ -90,7 +90,7 @@ class Layer:
         """
         return f'{self.__thickness / 1000}/{self.__ratio_lam}'
 
-    def get_dict_from_data(self):
+    def get_dict(self):
         """
         Возвращает словарь с данными текущего слоя
         :return: dict
@@ -120,5 +120,5 @@ class Layer:
         Возвращает кортеж с параметрами слоя
         :return: кортеж
         """
-        return str(self.__material), self.__thickness, self.__ratio_lam, self.__ratio_s, self.__resistance, \
-               self.__inertia
+        return self.__number, str(self.__material), self.__thickness, self.__ratio_lam, self.__ratio_s, \
+               self.__resistance, self.__inertia
